@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ERP OPERACIONES | Grupo WEDM</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+<style>
+/* ============================================================
+   VARIABLES Y RESET
+   ============================================================ */
+:root {
+  --navy:        #0f1f5c;
+  --navy-mid:    #1a2f7a;
+  --navy-light:  #243898;
+  --blue:        #2952cc;
+  --blue-light:  #3d6ae8;
+  --accent:      #f0a500;
+  --accent-light:#ffc840;
+  --white:       #ffffff;
+  --bg:          #f4f6fb;
+  --bg2:         #eef1f8;
+  --surface:     #ffffff;
+  --border:      #dde3f3;
+  --text:        #111827;
+  --text-mid:    #374151;
+  --text-muted:  #6b7280;
+  --success:     #16a34a;
+  --success-bg:  #dcfce7;
+  --warning:     #d97706;
+  --warning-bg:  #fef3c7;
+  --danger:      #dc2626;
+  --danger-bg:   #fee2e2;
+  --info:        #0284c7;
+  --info-bg:     #e0f2fe;
+  --ops-orange:  #ea580c;
+  --ops-orange-bg:#fff7ed;
+  --sidebar-w:   264px;
+  --topbar-h:    64px;
+  --radius:      12px;
+  --radius-sm:   8px;
+  --shadow:      0 2px 12px rgba(15,31,92,.08);
+  --shadow-md:   0 4px 24px rgba(15,31,92,.13);
+  --shadow-lg:   0 8px 40px rgba(15,31,92,.18);
+  --trans:       .22s cubic-bezier(.4,0,.2,1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); }
+button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+input, select, textarea { font-family: inherit; }
+a { text-decoration: none; color: inherit; }
+ul { list-style: none; }
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+#loginScreen {
+  position: fixed; inset: 0; z-index: 1000;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 55%, var(--ops-orange) 100%);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn .5s ease;
+}
+.login-bg-pattern {
+  position: absolute; inset: 0; overflow: hidden; opacity: .06;
+  background-image: repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%);
+  background-size: 24px 24px;
+}
+.login-card {
+  position: relative; z-index: 1;
+  background: var(--white); border-radius: 20px;
+  padding: 48px 44px; width: 420px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp .5s cubic-bezier(.4,0,.2,1);
+}
+.login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+.login-logo-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--navy), var(--ops-orange));
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 22px; box-shadow: 0 4px 16px rgba(234,88,12,.35);
+}
+.login-logo h1 { font-size: 20px; font-weight: 800; color: var(--navy); line-height: 1.1; }
+.login-logo span { font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; }
+.login-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--ops-orange-bg); color: var(--ops-orange);
+  border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; margin-bottom: 14px;
+}
+.login-title { font-size: 26px; font-weight: 800; color: var(--navy); margin-bottom: 6px; }
+.login-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; }
+.form-group { margin-bottom: 18px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-mid); margin-bottom: 6px; }
+.form-group .input-wrap { position: relative; }
+.form-group .input-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; }
+.form-group input {
+  width: 100%; padding: 12px 14px 12px 40px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 14px; color: var(--text); background: var(--bg);
+  transition: border-color var(--trans), box-shadow var(--trans);
+}
+.form-group input:focus { border-color: var(--ops-orange); box-shadow: 0 0 0 3px rgba(234,88,12,.12); background: white; outline: none; }
+.btn-login {
+  width: 100%; padding: 14px; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--navy), var(--ops-orange));
+  color: white; font-size: 15px; font-weight: 700; letter-spacing: .01em;
+  box-shadow: 0 4px 16px rgba(234,88,12,.3);
+  transition: all var(--trans); margin-top: 8px;
+}
+.btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(234,88,12,.4); }
+.btn-login:active { transform: translateY(0); }
+.login-error {
+  background: var(--danger-bg); color: var(--danger); border-radius: var(--radius-sm);
+  padding: 10px 14px; font-size: 13px; font-weight: 500; margin-top: 14px;
+  display: none; align-items: center; gap: 8px;
+}
+.login-version { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 28px; }
+
+/* ============================================================
+   LAYOUT PRINCIPAL
+   ============================================================ */
+#app { display: none; height: 100vh; overflow: hidden; }
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+  background: linear-gradient(180deg, var(--navy) 0%, #0c1a4e 100%);
+  display: flex; flex-direction: column;
+  box-shadow: 4px 0 24px rgba(15,31,92,.22); z-index: 100;
+  transition: transform var(--trans);
+}
+.sidebar-brand {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: 12px;
+}
+.brand-icon {
+  width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--ops-orange), #fbbf24);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 18px; box-shadow: 0 4px 12px rgba(234,88,12,.35);
+}
+.brand-text h2 { font-size: 15px; font-weight: 800; color: white; }
+.brand-text .brand-sub { font-size: 9.5px; font-weight: 500; color: rgba(255,255,255,.45); letter-spacing: .08em; text-transform: uppercase; }
+.brand-text .brand-module {
+  font-size: 10px; font-weight: 700; color: var(--accent);
+  letter-spacing: .08em; text-transform: uppercase; margin-top: 2px;
+}
+
+.sidebar-user {
+  padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,.07);
+  display: flex; align-items: center; gap: 10px;
+}
+.user-avatar {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--ops-orange), #fbbf24);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 13px; font-weight: 700;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-info .name { font-size: 13px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-info .role { font-size: 10.5px; color: rgba(255,255,255,.45); }
+.user-logout { color: rgba(255,255,255,.35); font-size: 14px; padding: 4px; cursor: pointer; transition: color var(--trans); }
+.user-logout:hover { color: var(--accent); }
+
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 10px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.1) transparent; }
+.nav-section { margin-bottom: 6px; }
+.nav-section-label { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.28); text-transform: uppercase; letter-spacing: .14em; padding: 10px 8px 5px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px; border-radius: 9px;
+  color: rgba(255,255,255,.62); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all var(--trans); margin-bottom: 2px;
+  white-space: nowrap; overflow: hidden;
+}
+.nav-item i { width: 18px; text-align: center; font-size: 13.5px; flex-shrink: 0; }
+.nav-item:hover { background: rgba(255,255,255,.07); color: white; }
+.nav-item.active { background: linear-gradient(135deg, rgba(234,88,12,.35), rgba(234,88,12,.15)); color: white; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.nav-item.active i { color: var(--accent); }
+.nav-badge {
+  margin-left: auto; background: var(--danger); color: white;
+  font-size: 9px; font-weight: 700; border-radius: 10px;
+  padding: 2px 6px; min-width: 18px; text-align: center;
+}
+
+.sidebar-footer { padding: 12px 18px; border-top: 1px solid rgba(255,255,255,.07); }
+.sidebar-version { font-size: 9.5px; color: rgba(255,255,255,.25); text-align: center; font-family: 'DM Mono', monospace; }
+
+/* TOPBAR */
+.topbar {
+  position: fixed; top: 0; left: var(--sidebar-w); right: 0; height: var(--topbar-h);
+  background: var(--white); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 28px; gap: 16px;
+  z-index: 90; box-shadow: 0 2px 8px rgba(15,31,92,.06);
+}
+.topbar-title { font-size: 18px; font-weight: 700; color: var(--navy); flex: 1; }
+.topbar-title span { font-size: 13px; font-weight: 400; color: var(--text-muted); margin-left: 8px; }
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
+.topbar-btn {
+  width: 38px; height: 38px; border-radius: var(--radius-sm); border: 1.5px solid var(--border);
+  background: white; color: var(--text-mid); font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all var(--trans); position: relative;
+}
+.topbar-btn:hover { border-color: var(--ops-orange); color: var(--ops-orange); background: var(--ops-orange-bg); }
+.badge {
+  position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px;
+  background: var(--danger); color: white; font-size: 9px; font-weight: 700;
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  padding: 0 4px; border: 1.5px solid white;
+}
+
+/* MAIN CONTENT */
+.main {
+  margin-left: var(--sidebar-w); margin-top: var(--topbar-h);
+  padding: 28px; min-height: calc(100vh - var(--topbar-h));
+  overflow-y: auto; max-height: calc(100vh - var(--topbar-h));
+}
+
+/* ============================================================
+   COMPONENTES REUTILIZABLES
+   ============================================================ */
+.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+.card-header { padding: 16px 22px 13px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-header h3 { font-size: 14.5px; font-weight: 700; color: var(--navy); }
+.card-body { padding: 20px 22px; }
+
+/* Stat Cards */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 16px; margin-bottom: 22px; }
+.stat-card {
+  background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 18px 20px; display: flex; align-items: flex-start; gap: 14px;
+  box-shadow: var(--shadow); transition: transform var(--trans), box-shadow var(--trans);
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.stat-icon { width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 19px; }
+.stat-icon.navy    { background: rgba(15,31,92,.08);  color: var(--navy); }
+.stat-icon.blue    { background: rgba(41,82,204,.1);  color: var(--blue); }
+.stat-icon.success { background: var(--success-bg);   color: var(--success); }
+.stat-icon.warning { background: var(--warning-bg);   color: var(--warning); }
+.stat-icon.danger  { background: var(--danger-bg);    color: var(--danger); }
+.stat-icon.orange  { background: var(--ops-orange-bg);color: var(--ops-orange); }
+.stat-info { flex: 1; }
+.stat-value { font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1; font-family: 'DM Mono', monospace; }
+.stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-top: 4px; }
+.stat-trend { font-size: 11px; font-weight: 600; margin-top: 5px; }
+.stat-trend.up   { color: var(--success); }
+.stat-trend.down { color: var(--danger); }
+.stat-trend.info { color: var(--info); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px; border-radius: var(--radius-sm);
+  font-size: 13.5px; font-weight: 600; transition: all var(--trans);
+  cursor: pointer; border: 1.5px solid transparent; white-space: nowrap;
+}
+.btn-primary { background: var(--navy); color: white; border-color: var(--navy); box-shadow: 0 2px 8px rgba(15,31,92,.22); }
+.btn-primary:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(15,31,92,.3); }
+.btn-orange { background: var(--ops-orange); color: white; border-color: var(--ops-orange); box-shadow: 0 2px 8px rgba(234,88,12,.25); }
+.btn-orange:hover { opacity: .92; transform: translateY(-1px); }
+.btn-secondary { background: white; color: var(--navy); border-color: var(--border); }
+.btn-secondary:hover { border-color: var(--navy); background: var(--bg); }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { opacity: .9; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { opacity: .9; }
+.btn-warning { background: var(--warning); color: white; }
+.btn-warning:hover { opacity: .9; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-icon { padding: 7px; width: 33px; height: 33px; justify-content: center; }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+thead tr { background: var(--navy); }
+thead th { padding: 11px 16px; text-align: left; color: white; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+tbody tr { border-bottom: 1px solid var(--border); transition: background var(--trans); }
+tbody tr:hover { background: var(--bg2); }
+tbody td { padding: 11px 16px; color: var(--text-mid); vertical-align: middle; }
+tbody tr:last-child { border-bottom: none; }
+.td-mono { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--blue); font-weight: 500; }
+.td-actions { display: flex; gap: 5px; }
+
+/* Pills */
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
+.pill-success { background: var(--success-bg); color: var(--success); }
+.pill-danger  { background: var(--danger-bg);  color: var(--danger); }
+.pill-warning { background: var(--warning-bg); color: var(--warning); }
+.pill-info    { background: var(--info-bg);    color: var(--info); }
+.pill-navy    { background: rgba(15,31,92,.09); color: var(--navy); }
+.pill-orange  { background: var(--ops-orange-bg); color: var(--ops-orange); }
+.pill-gray    { background: #f3f4f6; color: #6b7280; }
+.pill-dot::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* Toolbar */
+.toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.search-box { position: relative; flex: 1; min-width: 200px; }
+.search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px; }
+.search-box input {
+  width: 100%; padding: 9px 12px 9px 36px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13.5px; color: var(--text); background: white; transition: border-color var(--trans);
+}
+.search-box input:focus { border-color: var(--ops-orange); outline: none; box-shadow: 0 0 0 3px rgba(234,88,12,.1); }
+select.filter-sel {
+  padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13.5px; color: var(--text-mid); background: white; cursor: pointer;
+}
+select.filter-sel:focus { border-color: var(--ops-orange); outline: none; }
+
+/* Forms */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }
+.f-group { display: flex; flex-direction: column; gap: 5px; }
+.f-group label { font-size: 12.5px; font-weight: 600; color: var(--text-mid); }
+.f-group input, .f-group select, .f-group textarea {
+  padding: 10px 13px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13.5px; color: var(--text); background: white; transition: border-color var(--trans);
+}
+.f-group input:focus, .f-group select:focus, .f-group textarea:focus {
+  border-color: var(--ops-orange); outline: none; box-shadow: 0 0 0 3px rgba(234,88,12,.1);
+}
+.f-group textarea { resize: vertical; min-height: 80px; }
+.f-group.full { grid-column: 1 / -1; }
+
+/* Modal */
+.overlay {
+  position: fixed; inset: 0; background: rgba(15,31,92,.5); z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; animation: fadeIn .2s ease; backdrop-filter: blur(3px);
+}
+.modal {
+  background: white; border-radius: 18px; width: 100%; max-width: 620px;
+  max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg);
+  animation: slideUp .25s cubic-bezier(.4,0,.2,1);
+}
+.modal-lg { max-width: 820px; }
+.modal-header {
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: white; z-index: 1;
+}
+.modal-header h3 { font-size: 16px; font-weight: 700; color: var(--navy); }
+.modal-close {
+  width: 30px; height: 30px; border-radius: 8px; background: var(--bg);
+  color: var(--text-muted); font-size: 14px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all var(--trans);
+}
+.modal-close:hover { background: var(--danger-bg); color: var(--danger); }
+.modal-body { padding: 22px 24px; }
+.modal-footer { padding: 14px 24px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Empty state */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 60px 20px; color: var(--text-muted); text-align: center;
+}
+.empty-state i { font-size: 40px; margin-bottom: 14px; opacity: .35; }
+.empty-state h4 { font-size: 16px; font-weight: 600; color: var(--text-mid); margin-bottom: 6px; }
+.empty-state p { font-size: 13px; }
+
+/* Status badges helper */
+.status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+
+/* Toast */
+#toastContainer { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  padding: 12px 18px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 500;
+  box-shadow: var(--shadow-md); display: flex; align-items: center; gap: 8px;
+  animation: slideToast .35s ease; min-width: 240px; max-width: 340px;
+}
+.toast.success { background: var(--success); color: white; }
+.toast.error   { background: var(--danger);  color: white; }
+.toast.warning { background: var(--warning); color: white; }
+.toast.info    { background: var(--info);    color: white; }
+
+/* Activity feed */
+.activity-feed { display: flex; flex-direction: column; gap: 1px; }
+.activity-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.activity-item:last-child { border-bottom: none; }
+.act-icon {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.act-info { flex: 1; min-width: 0; }
+.act-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.act-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.act-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; font-family: 'DM Mono', monospace; }
+
+/* OT Card grid */
+.ot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.ot-card {
+  background: white; border-radius: var(--radius); border: 1px solid var(--border);
+  box-shadow: var(--shadow); padding: 18px 20px; cursor: pointer;
+  transition: transform var(--trans), box-shadow var(--trans);
+}
+.ot-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--ops-orange); }
+.ot-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ot-card-id { font-size: 13px; font-weight: 700; color: var(--blue); font-family: 'DM Mono', monospace; }
+.ot-card-body { font-size: 13px; color: var(--text-mid); line-height: 1.6; }
+.ot-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* Skeleton */
+.skeleton { background: linear-gradient(90deg, var(--bg) 25%, var(--bg2) 50%, var(--bg) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.sk-row { height: 44px; margin-bottom: 2px; width: 100%; }
+.sk-stat { height: 86px; border-radius: 12px; }
+.sk-card { height: 260px; border-radius: 12px; }
+
+/* Animaciones */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideToast { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Config grid */
+.config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 14px; }
+.config-item { background: var(--bg); border-radius: var(--radius); padding: 20px; border: 1.5px solid var(--border); transition: border-color var(--trans), box-shadow var(--trans); }
+.config-item:hover { border-color: var(--ops-orange); box-shadow: var(--shadow); }
+.config-item-icon { width: 42px; height: 42px; border-radius: 12px; background: var(--navy); color: white; display: flex; align-items: center; justify-content: center; font-size: 17px; margin-bottom: 12px; }
+.config-item h4 { font-size: 14px; font-weight: 700; color: var(--navy); }
+.config-item p { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
+
+/* Progress bar */
+.progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width .5s ease; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .topbar, .main { left: 0; margin-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     PANTALLA DE LOGIN
+     ============================================================ -->
+<div id="loginScreen">
+  <div class="login-bg-pattern"></div>
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon"><i class="fas fa-hard-hat"></i></div>
+      <div>
+        <h1>ERP OPERACIONES</h1>
+        <span>Grupo WEDM · Metal Mecánica</span>
+      </div>
+    </div>
+    <div class="login-badge"><i class="fas fa-tools"></i> Módulo Operativo</div>
+    <h2 class="login-title">Iniciar Sesión</h2>
+    <p class="login-sub">Accede para gestionar órdenes, servicios y programación</p>
+    <div class="form-group">
+      <label>Usuario</label>
+      <div class="input-wrap">
+        <i class="fas fa-user"></i>
+        <input id="loginUser" type="text" placeholder="Tu usuario" autocomplete="username"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <div class="input-wrap">
+        <i class="fas fa-lock"></i>
+        <input id="loginPass" type="password" placeholder="Tu contraseña" autocomplete="current-password"/>
+      </div>
+    </div>
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">
+      <span id="loginBtnText"><i class="fas fa-sign-in-alt" style="margin-right:6px"></i> Iniciar Sesión</span>
+    </button>
+    <div class="login-error" id="loginError">
+      <i class="fas fa-exclamation-circle"></i>
+      <span id="loginErrorMsg"></span>
+    </div>
+    <div class="login-version">ERP OPERACIONES v1.0.0 · Powered by Google Sheets + Apps Script</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     APP PRINCIPAL
+     ============================================================ -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fas fa-hard-hat"></i></div>
+      <div class="brand-text">
+        <h2>Grupo WEDM</h2>
+        <div class="brand-sub">Sistema ERP</div>
+        <div class="brand-module">⚡ Operaciones</div>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebarAvatar">A</div>
+      <div class="user-info">
+        <div class="name" id="sidebarName">Usuario</div>
+        <div class="role" id="sidebarRole">Rol</div>
+      </div>
+      <i class="fas fa-sign-out-alt user-logout" onclick="doLogout()" title="Cerrar sesión"></i>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebarNav">
+      <div class="nav-section">
+        <div class="nav-section-label">Principal</div>
+        <div class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
+          <i class="fas fa-th-large"></i> Dashboard
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Gestión Operativa</div>
+        <div class="nav-item" data-view="servicios" onclick="navigate('servicios')">
+          <i class="fas fa-charging-station"></i> Servicios
+        </div>
+        <div class="nav-item" data-view="ordenes" onclick="navigate('ordenes')">
+          <i class="fas fa-bolt"></i> Órdenes de Trabajo
+          <span class="nav-badge" id="navBadgeOT" style="display:none">0</span>
+        </div>
+        <div class="nav-item" data-view="visitas" onclick="navigate('visitas')">
+          <i class="fas fa-map-marker-alt"></i> Visitas Técnicas
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Planificación</div>
+        <div class="nav-item" data-view="programacion" onclick="navigate('programacion')">
+          <i class="fas fa-calendar-alt"></i> Programación
+        </div>
+        <div class="nav-item" data-view="cuadrillas" onclick="navigate('cuadrillas')">
+          <i class="fas fa-users-cog"></i> Cuadrillas
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Documentos</div>
+        <div class="nav-item" data-view="actas" onclick="navigate('actas')">
+          <i class="fas fa-file-signature"></i> Actas de Entrega
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Sistema</div>
+        <div class="nav-item" data-view="sistema" onclick="navigate('sistema')">
+          <i class="fas fa-cogs"></i> Administración
+        </div>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-version">ERP OPERACIONES v1.0.0 · Grupo WEDM</div>
+    </div>
+  </aside>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-title" id="topbarTitle">
+      Dashboard <span id="topbarSub"></span>
+    </div>
+    <div class="topbar-actions">
+      <button class="topbar-btn" onclick="navigate('ordenes')" title="OT pendientes">
+        <i class="fas fa-bolt"></i>
+        <span class="badge" id="alertBadge" style="display:none">0</span>
+      </button>
+      <button class="topbar-btn" onclick="refreshView()" title="Actualizar">
+        <i class="fas fa-sync-alt" id="refreshIcon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main" id="mainContent"></main>
+</div>
+
+<!-- MODAL GLOBAL -->
+<div class="overlay" id="modalOverlay" style="display:none" onclick="closeModalOnBg(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Título</h3>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toastContainer"></div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+// ============================================================
+// CONFIGURACIÓN — cambia SCRIPT_URL por la URL de tu Web App
+// ============================================================
+const APP = {
+  SCRIPT_URL: 'PEGA_AQUI_LA_URL_DEL_WEB_APP_ERP_OPERACIONES',
+  token: null,
+  sesion: null,
+  currentView: 'dashboard',
+  cache: {},
+  CACHE_TTL: {
+    'DASHBOARD.indicadores': 60000,
+    'CUADRILLAS.listar': 300000,
+    'DEFAULT': 30000,
+  },
+};
+
+// ============================================================
+// CACHE
+// ============================================================
+const Cache = {
+  key: (m, a, d) => m + '.' + a + '|' + JSON.stringify(d),
+  ttl: (m, a) => APP.CACHE_TTL[m + '.' + a] || APP.CACHE_TTL.DEFAULT,
+  get: (m, a, d) => {
+    const k = Cache.key(m, a, d);
+    const e = APP.cache[k];
+    if (!e) return null;
+    if (Date.now() - e.ts > Cache.ttl(m, a)) { delete APP.cache[k]; return null; }
+    return e.data;
+  },
+  set: (m, a, d, data) => { APP.cache[Cache.key(m, a, d)] = { data, ts: Date.now() }; },
+  invalidate: (mod) => { Object.keys(APP.cache).forEach(k => { if (k.startsWith(mod)) delete APP.cache[k]; }); },
+  clear: () => { APP.cache = {}; },
+};
+
+const NO_CACHE = new Set(['login','logout','crear','actualizar','eliminar','cambiarEstado',
+  'registrarHoras','registrar','inicializar','formatear','porFecha']);
+
+// ============================================================
+// API CLIENT — JSONP
+// ============================================================
+async function api(modulo, accion, datos = {}) {
+  return new Promise((resolve) => {
+    const cbName = '_ops_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const payload = encodeURIComponent(JSON.stringify({ modulo, accion, datos, token: APP.token }));
+    const url = APP.SCRIPT_URL + '?callback=' + cbName + '&payload=' + payload;
+    const timer = setTimeout(() => {
+      if (window[cbName]) delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve({ ok: false, mensaje: 'Tiempo de espera agotado. Verifica que la Web App esté publicada.' });
+    }, 20000);
+    window[cbName] = function(data) {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script && script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
+    const script = document.createElement('script');
+    script.src = url;
+    script.onerror = function() {
+      clearTimeout(timer);
+      if (window[cbName]) delete window[cbName];
+      resolve({ ok: false, mensaje: 'Error de conexión con el servidor.' });
+    };
+    document.head.appendChild(script);
+  });
+}
+
+async function callApi(m, a, d = {}) {
+  if (!NO_CACHE.has(a)) {
+    const cached = Cache.get(m, a, d);
+    if (cached) return cached;
+  }
+  const result = await api(m, a, d);
+  if (result.ok && !NO_CACHE.has(a)) Cache.set(m, a, d, result);
+  if (result.ok && NO_CACHE.has(a)) Cache.invalidate(m);
+  return result;
+}
+
+// ============================================================
+// SHA-256 (para hash de password en el cliente)
+// ============================================================
+async function sha256(msg) {
+  const msgBuffer = new TextEncoder().encode(msg);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray  = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ============================================================
+// LOGIN / AUTH
+// ============================================================
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  const errMsg = document.getElementById('loginErrorMsg');
+  const btn = document.getElementById('loginBtnText');
+  if (!username || !password) {
+    errMsg.textContent = 'Ingresa usuario y contraseña.';
+    errEl.style.display = 'flex'; return;
+  }
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:6px"></i> Verificando...';
+  errEl.style.display = 'none';
+  const res = await callApi('AUTH', 'login', { username, password });
+  if (res.ok) {
+    APP.token = res.datos.token;
+    APP.sesion = { username, rol: res.datos.rol, empleado: res.datos.empleado };
+    localStorage.setItem('erp_ops_token', APP.token);
+    localStorage.setItem('erp_ops_sesion', JSON.stringify(APP.sesion));
+    initApp();
+  } else {
+    errMsg.textContent = res.mensaje || 'Credenciales incorrectas';
+    errEl.style.display = 'flex';
+    btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:6px"></i> Iniciar Sesión';
+  }
+}
+
+async function doLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  await callApi('AUTH', 'logout', { token: APP.token });
+  APP.token = null; APP.sesion = null;
+  localStorage.removeItem('erp_ops_token');
+  localStorage.removeItem('erp_ops_sesion');
+  Cache.clear();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginBtnText').innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:6px"></i> Iniciar Sesión';
+}
+
+document.addEventListener('keydown', e => {
+  if (document.getElementById('loginScreen').style.display !== 'none') {
+    if (e.key === 'Enter') doLogin();
+  }
+});
+
+function initApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  const nombre = APP.sesion.empleado || APP.sesion.username || 'Usuario';
+  document.getElementById('sidebarName').textContent = nombre;
+  document.getElementById('sidebarRole').textContent = APP.sesion.rol || '';
+  document.getElementById('sidebarAvatar').textContent = nombre.charAt(0).toUpperCase();
+  navigate('dashboard');
+  loadAlertBadge();
+  setTimeout(initPrefetch, 500);
+}
+
+async function loadAlertBadge() {
+  const res = await callApi('ORDENES_TRABAJO', 'estadisticas', {});
+  if (res.ok && res.datos.pendientes > 0) {
+    document.getElementById('alertBadge').textContent = res.datos.pendientes;
+    document.getElementById('alertBadge').style.display = 'flex';
+    document.getElementById('navBadgeOT').textContent = res.datos.pendientes;
+    document.getElementById('navBadgeOT').style.display = 'inline-flex';
+  }
+}
+
+// ============================================================
+// NAVEGACIÓN
+// ============================================================
+const VIEW_TITLES = {
+  dashboard: 'Dashboard', servicios: 'Servicios y Solicitudes',
+  ordenes: 'Órdenes de Trabajo', visitas: 'Visitas Técnicas',
+  programacion: 'Programación de Personal', cuadrillas: 'Cuadrillas',
+  actas: 'Actas de Entrega', sistema: 'Administración del Sistema',
+};
+
+function navigate(view) {
+  APP.currentView = view;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const active = document.querySelector(`[data-view="${view}"]`);
+  if (active) active.classList.add('active');
+  document.getElementById('topbarTitle').textContent = VIEW_TITLES[view] || view;
+  const views = { dashboard, servicios, ordenes, visitas, programacion, cuadrillas, actas, sistema };
+  if (views[view]) views[view]();
+  else mainContent(`<div class="empty-state"><i class="fas fa-wrench"></i><h4>Próximamente</h4><p>Esta sección está en desarrollo.</p></div>`);
+}
+
+const PREFETCH_MAP = {
+  ordenes:      [['ORDENES_TRABAJO','listar',{}], ['ORDENES_TRABAJO','estadisticas',{}]],
+  servicios:    [['SERVICIOS','listar',{}]],
+  visitas:      [['VISITAS','listar',{}]],
+  programacion: [['PROGRAMACION','listar',{}]],
+  cuadrillas:   [['CUADRILLAS','listar',{}]],
+  actas:        [['ACTAS','listar',{}]],
+  dashboard:    [['DASHBOARD','indicadores',{}]],
+};
+
+function prefetch(view) {
+  if (!APP.token || view === APP.currentView) return;
+  (PREFETCH_MAP[view] || []).forEach(([m, a, d]) => {
+    if (!Cache.get(m, a, d)) callApi(m, a, d);
+  });
+}
+
+function initPrefetch() {
+  document.querySelectorAll('.nav-item[data-view]').forEach(el => {
+    el.addEventListener('mouseenter', () => prefetch(el.dataset.view));
+  });
+}
+
+function refreshView() {
+  const icon = document.getElementById('refreshIcon');
+  icon.style.animation = 'spin .7s linear infinite';
+  setTimeout(() => icon.style.animation = '', 700);
+  const modMap = {
+    dashboard:'DASHBOARD', servicios:'SERVICIOS', ordenes:'ORDENES_TRABAJO',
+    visitas:'VISITAS', programacion:'PROGRAMACION', cuadrillas:'CUADRILLAS', actas:'ACTAS'
+  };
+  const mod = modMap[APP.currentView];
+  if (mod) Cache.invalidate(mod); else Cache.clear();
+  navigate(APP.currentView);
+}
+
+function mainContent(html) { document.getElementById('mainContent').innerHTML = html; }
+
+// ============================================================
+// UTILIDADES UI
+// ============================================================
+function v(id) { return (document.getElementById(id)?.value || '').trim(); }
+
+function filtrarTabla(input, tablaId) {
+  const q = (typeof input === 'object' ? input.value : input).toLowerCase();
+  document.querySelectorAll(`#${tablaId} tbody tr`).forEach(row => {
+    row.style.display = [...row.querySelectorAll('td')].some(td => td.textContent.toLowerCase().includes(q)) ? '' : 'none';
+  });
+}
+
+function openModal(title, bodyHtml, botones = [], large = false) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  document.getElementById('modalFooter').innerHTML = botones.map(b =>
+    `<button class="btn ${b.cls}" onclick="${b.action}">${b.label}</button>`
+  ).join('');
+  const modal = document.getElementById('modal');
+  modal.className = 'modal' + (large ? ' modal-lg' : '');
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
+function closeModalOnBg(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = { success:'check-circle', error:'times-circle', warning:'exclamation-triangle', info:'info-circle' };
+  el.innerHTML = `<i class="fas fa-${icons[type]||'info-circle'}"></i> ${msg}`;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0'; el.style.transform = 'translateX(100%)'; el.style.transition = 'all .4s';
+    setTimeout(() => el.remove(), 400);
+  }, 3500);
+}
+
+function estadoPill(estado) {
+  const map = {
+    'Pendiente':   'pill-warning',
+    'En Proceso':  'pill-info',
+    'En Revisión': 'pill-orange',
+    'Cerrada':     'pill-success',
+    'Cancelado':   'pill-gray',
+    'Cancelada':   'pill-gray',
+    'Activo':      'pill-success',
+    'Inactivo':    'pill-danger',
+  };
+  const cls = map[estado] || 'pill-gray';
+  return `<span class="pill ${cls} pill-dot">${estado}</span>`;
+}
+
+function fmtFecha(val) {
+  if (!val) return '—';
+  const d = new Date(val);
+  if (isNaN(d)) return val;
+  return d.toLocaleDateString('es-CO', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function skeletonTable(cols) {
+  return `<div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+  <tbody>${[1,2,3,4,5].map(()=>`<tr>${cols.map(()=>`<td><div class="skeleton" style="height:20px;border-radius:4px"></div></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+// ============================================================
+// VISTA: DASHBOARD
+// ============================================================
+async function dashboard() {
+  mainContent(`
+  <div class="stats-grid">
+    ${[1,2,3,4,5,6].map(()=>'<div class="skeleton sk-stat"></div>').join('')}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
+    <div class="skeleton sk-card"></div>
+    <div class="skeleton sk-card"></div>
+  </div>`);
+  const [resInd, resRec] = await Promise.all([
+    callApi('DASHBOARD', 'indicadores', {}),
+    callApi('DASHBOARD', 'actividadReciente', {})
+  ]);
+  if (!resInd.ok) { mainContent(`<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error al cargar</h4><p>${resInd.mensaje}</p></div>`); return; }
+  const d = resInd.datos;
+  const recientes = resRec.ok ? resRec.datos : [];
+
+  mainContent(`
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="fas fa-bolt"></i></div>
+      <div class="stat-info">
+        <div class="stat-value">${d.OT_ACTIVAS ?? 0}</div>
+        <div class="stat-label">OT Activas</div>
+        <div class="stat-trend info"><i class="fas fa-circle"></i> ${d.OT_TOTAL ?? 0} total históricas</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
+      <div class="stat-info">
+        <div class="stat-value">${d.OT_CERRADAS ?? 0}</div>
+        <div class="stat-label">OT Cerradas</div>
+        <div class="stat-trend up"><i class="fas fa-thumbs-up"></i> Completadas</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon warning"><i class="fas fa-hourglass-half"></i></div>
+      <div class="stat-info">
+        <div class="stat-value">${d.SERVICIOS_PENDIENTES ?? 0}</div>
+        <div class="stat-label">Servicios Pendientes</div>
+        <div class="stat-trend down"><i class="fas fa-clock"></i> Requieren OT</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon navy"><i class="fas fa-clock"></i></div>
+      <div class="stat-info">
+        <div class="stat-value">${(d.HORAS_TOTALES ?? 0).toFixed(1)}</div>
+        <div class="stat-label">Horas Trabajadas (Total)</div>
+        <div class="stat-trend info"><i class="fas fa-chart-line"></i> Acumuladas</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon orange"><i class="fas fa-map-marker-alt"></i></div>
+      <div class="stat-info">
+        <div class="stat-value">${d.VISITAS_MES ?? 0}</div>
+        <div class="stat-label">Visitas Este Mes</div>
+        <div class="stat-trend up"><i class="fas fa-car"></i> Desplazamientos</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="fas fa-calendar-day"></i></div>
+      <div class="stat-info">
+        <div class="stat-value">${d.PROGRAMADOS_HOY ?? 0}</div>
+        <div class="stat-label">Programados Hoy</div>
+        <div class="stat-trend info"><i class="fas fa-users"></i> Técnicos activos</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-bolt" style="color:var(--ops-orange);margin-right:8px"></i>Últimas Órdenes de Trabajo</h3>
+        <button class="btn btn-sm btn-orange" onclick="navigate('ordenes')"><i class="fas fa-arrow-right"></i> Ver todas</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        ${recientes.length === 0
+          ? '<div class="empty-state" style="padding:30px"><i class="fas fa-bolt"></i><h4>Sin OT</h4><p>No hay órdenes registradas aún.</p></div>'
+          : `<div class="table-wrap"><table>
+              <thead><tr><th>ID OT</th><th>Técnico</th><th>Estado</th><th>Horas</th><th></th></tr></thead>
+              <tbody>
+                ${recientes.slice(0,8).map(ot => `
+                  <tr>
+                    <td class="td-mono">${ot.ID_OT}</td>
+                    <td>${ot.TECNICO || '—'}</td>
+                    <td>${estadoPill(ot.ESTADO)}</td>
+                    <td style="font-family:'DM Mono',monospace">${ot.HORAS_TRABAJADAS || 0}h</td>
+                    <td><button class="btn btn-sm btn-secondary" onclick="verDetalleOT('${ot.ID_OT}')"><i class="fas fa-eye"></i></button></td>
+                  </tr>`).join('')}
+              </tbody>
+            </table></div>`}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card">
+        <div class="card-header"><h3><i class="fas fa-chart-pie" style="color:var(--navy);margin-right:8px"></i>Estado OT</h3></div>
+        <div class="card-body" style="padding:14px 18px">
+          ${[
+            ['Pendientes',   d.OT_ACTIVAS ?? 0,  'var(--warning)', 'var(--warning-bg)'],
+            ['Cerradas',     d.OT_CERRADAS ?? 0, 'var(--success)', 'var(--success-bg)'],
+            ['Servicios',    d.SERVICIOS_TOTAL ?? 0, 'var(--blue)', 'var(--info-bg)'],
+          ].map(([label, val, color, bg]) => `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span style="font-size:13px;color:var(--text-mid)">${label}</span>
+              <span style="font-size:14px;font-weight:700;color:${color};font-family:'DM Mono',monospace">${val}</span>
+            </div>
+            <div class="progress-bar" style="margin-bottom:14px">
+              <div class="progress-fill" style="width:${Math.min(100,(val/Math.max(d.OT_TOTAL||1,1))*100)}%;background:${color}"></div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3><i class="fas fa-calendar-check" style="color:var(--navy);margin-right:8px"></i>Acciones Rápidas</h3></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="navigate('ordenes');setTimeout(()=>formNuevaOT(),400)">
+            <i class="fas fa-plus"></i> Nueva OT
+          </button>
+          <button class="btn btn-orange" style="width:100%;justify-content:center" onclick="navigate('servicios');setTimeout(()=>formNuevoServicio(),400)">
+            <i class="fas fa-file-alt"></i> Nuevo Servicio
+          </button>
+          <button class="btn btn-secondary" style="width:100%;justify-content:center" onclick="navigate('visitas');setTimeout(()=>formNuevaVisita(),400)">
+            <i class="fas fa-map-marker-alt"></i> Registrar Visita
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:11.5px;color:var(--text-muted);margin-top:14px;text-align:right">
+    <i class="fas fa-clock"></i> Actualizado: ${d.FECHA_ACTUALIZACION}
+  </p>`);
+}
+
+// ============================================================
+// VISTA: SERVICIOS
+// ============================================================
+async function servicios() {
+  mainContent(`<div class="card">
+    <div class="card-header"><h3>Cargando servicios...</h3></div>
+    <div class="card-body">${skeletonTable(['ID','Cliente','Tipo','Fecha','Estado','Acciones'])}</div>
+  </div>`);
+  const res = await callApi('SERVICIOS', 'listar', {});
+  const lista = res.ok ? res.datos : [];
+
+  mainContent(`
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-charging-station" style="color:var(--ops-orange);margin-right:8px"></i>Servicios y Solicitudes</h3>
+      <button class="btn btn-orange" onclick="formNuevoServicio()"><i class="fas fa-plus"></i> Nuevo Servicio</button>
+    </div>
+    <div class="card-body" style="padding-top:14px">
+      <div class="toolbar">
+        <div class="search-box"><i class="fas fa-search"></i>
+          <input type="text" placeholder="Buscar servicio..." oninput="filtrarTabla(this,'tblServicios')"/>
+        </div>
+        <select class="filter-sel" onchange="filtrarPorEstadoServ(this.value)">
+          <option value="">Todos los estados</option>
+          <option>Pendiente</option><option>En Proceso</option><option>Cerrada</option><option>Cancelado</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table id="tblServicios">
+          <thead><tr><th>ID Servicio</th><th>Cliente</th><th>Tipo Servicio</th><th>Fecha Solicitud</th><th>Estado</th><th>Sucursal</th><th>Acciones</th></tr></thead>
+          <tbody>
+            ${lista.length === 0
+              ? `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-charging-station"></i><h4>Sin servicios</h4><p>Crea el primer servicio.</p></div></td></tr>`
+              : lista.map(s => `
+              <tr>
+                <td class="td-mono">${s.ID_SERVICIO}</td>
+                <td style="font-weight:600">${s.CLIENTE}</td>
+                <td>${s.TIPO_SERVICIO || '—'}</td>
+                <td style="font-size:12px">${fmtFecha(s.FECHA_SOLICITUD)}</td>
+                <td>${estadoPill(s.ESTADO)}</td>
+                <td>${s.SUCURSAL || '—'}</td>
+                <td><div class="td-actions">
+                  <button class="btn btn-sm btn-secondary" onclick="crearOTdesdeServicio('${s.ID_SERVICIO}','${s.CLIENTE}')"><i class="fas fa-bolt"></i> OT</button>
+                  <button class="btn btn-sm btn-secondary" onclick="cambiarEstadoServicio('${s.ID_SERVICIO}','${s.ESTADO}')"><i class="fas fa-exchange-alt"></i></button>
+                </div></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`);
+}
+
+function filtrarPorEstadoServ(estado) {
+  document.querySelectorAll('#tblServicios tbody tr').forEach(tr => {
+    if (!estado) { tr.style.display = ''; return; }
+    const celdaEstado = tr.querySelectorAll('td')[4];
+    tr.style.display = celdaEstado && celdaEstado.textContent.includes(estado) ? '' : 'none';
+  });
+}
+
+function formNuevoServicio() {
+  openModal('Nuevo Servicio', `
+    <div class="form-grid">
+      <div class="f-group"><label>Cliente *</label><input id="srvCliente" placeholder="Nombre del cliente"/></div>
+      <div class="f-group"><label>Tipo de Servicio *</label>
+        <select id="srvTipo">
+          <option value="">Seleccionar...</option>
+          <option>Mantenimiento Preventivo</option><option>Mantenimiento Correctivo</option>
+          <option>Instalación</option><option>Inspección</option><option>Consultoría</option><option>Otro</option>
+        </select>
+      </div>
+      <div class="f-group"><label>Fecha Solicitud</label><input id="srvFecha" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+      <div class="f-group"><label>Sucursal</label><input id="srvSucursal" placeholder="Sucursal (opcional)"/></div>
+      <div class="f-group full"><label>Descripción</label><textarea id="srvDesc" placeholder="Describe el servicio requerido..."></textarea></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: '<i class="fas fa-save"></i> Guardar', cls: 'btn-orange', action: 'guardarServicio()' }
+    ]);
+}
+
+async function guardarServicio() {
+  const datos = {
+    CLIENTE: v('srvCliente'), TIPO_SERVICIO: v('srvTipo'),
+    FECHA_SOLICITUD: v('srvFecha'), SUCURSAL: v('srvSucursal'), DESCRIPCION: v('srvDesc')
+  };
+  if (!datos.CLIENTE || !datos.TIPO_SERVICIO) { toast('Cliente y tipo de servicio son requeridos.', 'warning'); return; }
+  const res = await callApi('SERVICIOS', 'crear', datos);
+  if (res.ok) { toast(`Servicio ${res.datos.id} creado.`, 'success'); closeModal(); servicios(); }
+  else toast(res.mensaje, 'error');
+}
+
+async function cambiarEstadoServicio(id, estadoActual) {
+  const estados = ['Pendiente','En Proceso','Cerrada','Cancelado'];
+  openModal('Cambiar Estado del Servicio', `
+    <p style="margin-bottom:14px;color:var(--text-mid)">Servicio: <strong>${id}</strong> — Estado actual: ${estadoPill(estadoActual)}</p>
+    <div class="f-group"><label>Nuevo Estado</label>
+      <select id="nuevoEstadoServ">
+        ${estados.map(e => `<option ${e===estadoActual?'selected':''}>${e}</option>`).join('')}
+      </select>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Cambiar', cls: 'btn-primary', action: `confirmarCambioEstadoServ('${id}')` }
+    ]);
+}
+
+async function confirmarCambioEstadoServ(id) {
+  const estado = v('nuevoEstadoServ');
+  const res = await callApi('SERVICIOS', 'cambiarEstado', { idServicio: id, estado });
+  if (res.ok) { toast(res.mensaje, 'success'); closeModal(); servicios(); }
+  else toast(res.mensaje, 'error');
+}
+
+function crearOTdesdeServicio(idServicio, cliente) {
+  navigate('ordenes');
+  setTimeout(() => formNuevaOT(idServicio, cliente), 400);
+}
+
+// ============================================================
+// VISTA: ÓRDENES DE TRABAJO
+// ============================================================
+let _otData = [];
+
+async function ordenes() {
+  mainContent(`<div class="card">
+    <div class="card-header"><h3>Cargando OT...</h3></div>
+    <div class="card-body">${skeletonTable(['ID OT','Servicio','Técnico','Fecha','Estado','Horas','Acciones'])}</div>
+  </div>`);
+  const [resOT, resStats] = await Promise.all([
+    callApi('ORDENES_TRABAJO', 'listar', {}),
+    callApi('ORDENES_TRABAJO', 'estadisticas', {})
+  ]);
+  _otData = resOT.ok ? resOT.datos : [];
+  const stats = resStats.ok ? resStats.datos : {};
+
+  mainContent(`
+  <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px">
+    ${[
+      ['Pendientes', stats.pendientes??0, 'warning'],
+      ['En Proceso', stats.enProceso??0, 'blue'],
+      ['En Revisión', stats.enRevision??0, 'orange'],
+      ['Cerradas', stats.cerradas??0, 'success'],
+      ['Horas Totales', (stats.horasTotales??0).toFixed(1)+'h', 'navy'],
+    ].map(([l,v,c]) => `
+      <div class="stat-card" style="padding:14px 16px">
+        <div class="stat-icon ${c}" style="width:38px;height:38px;font-size:15px"><i class="fas fa-${c==='success'?'check-circle':c==='blue'?'cog':c==='warning'?'hourglass-half':c==='navy'?'clock':'search'}"></i></div>
+        <div class="stat-info"><div class="stat-value" style="font-size:22px">${v}</div><div class="stat-label">${l}</div></div>
+      </div>`).join('')}
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-bolt" style="color:var(--ops-orange);margin-right:8px"></i>Órdenes de Trabajo</h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm btn-secondary" onclick="toggleViewOT()"><i class="fas fa-th-large" id="iconViewOT"></i></button>
+        <button class="btn btn-orange" onclick="formNuevaOT()"><i class="fas fa-plus"></i> Nueva OT</button>
+      </div>
+    </div>
+    <div class="card-body" style="padding-top:14px">
+      <div class="toolbar">
+        <div class="search-box"><i class="fas fa-search"></i>
+          <input type="text" placeholder="Buscar OT, técnico..." oninput="filtrarOT(this.value)"/>
+        </div>
+        <select class="filter-sel" id="filtroEstadoOT" onchange="filtrarOT('')">
+          <option value="">Todos los estados</option>
+          <option>Pendiente</option><option>En Proceso</option><option>En Revisión</option><option>Cerrada</option><option>Cancelado</option>
+        </select>
+      </div>
+      <div id="otContainer">
+        ${renderTablaOT(_otData)}
+      </div>
+    </div>
+  </div>`);
+}
+
+let _otViewMode = 'table';
+function toggleViewOT() {
+  _otViewMode = _otViewMode === 'table' ? 'cards' : 'table';
+  document.getElementById('iconViewOT').className = _otViewMode === 'table' ? 'fas fa-th-large' : 'fas fa-list';
+  document.getElementById('otContainer').innerHTML = _otViewMode === 'table' ? renderTablaOT(_otData) : renderCardsOT(_otData);
+}
+
+function filtrarOT(q) {
+  const estadoFiltro = document.getElementById('filtroEstadoOT')?.value || '';
+  let datos = _otData;
+  if (estadoFiltro) datos = datos.filter(o => o.ESTADO === estadoFiltro);
+  if (q) datos = datos.filter(o =>
+    Object.values(o).some(v => String(v).toLowerCase().includes(q.toLowerCase()))
+  );
+  document.getElementById('otContainer').innerHTML = _otViewMode === 'table' ? renderTablaOT(datos) : renderCardsOT(datos);
+}
+
+function renderTablaOT(data) {
+  if (!data.length) return `<div class="empty-state"><i class="fas fa-bolt"></i><h4>Sin órdenes</h4><p>Crea la primera OT.</p></div>`;
+  return `<div class="table-wrap"><table id="tblOT">
+    <thead><tr><th>ID OT</th><th>Servicio</th><th>Técnico</th><th>Fecha Programada</th><th>Estado</th><th>Horas</th><th>Acciones</th></tr></thead>
+    <tbody>
+      ${data.map(ot => `<tr>
+        <td class="td-mono" style="cursor:pointer" onclick="verDetalleOT('${ot.ID_OT}')">${ot.ID_OT}</td>
+        <td>${ot.SERVICIO || '—'}</td>
+        <td><strong>${ot.TECNICO || '—'}</strong></td>
+        <td style="font-size:12px">${fmtFecha(ot.FECHA_PROGRAMADA)}</td>
+        <td>${estadoPill(ot.ESTADO)}</td>
+        <td style="font-family:'DM Mono',monospace">${ot.HORAS_TRABAJADAS || 0}h</td>
+        <td><div class="td-actions">
+          <button class="btn btn-sm btn-secondary" title="Ver detalle" onclick="verDetalleOT('${ot.ID_OT}')"><i class="fas fa-eye"></i></button>
+          <button class="btn btn-sm btn-warning" title="Cambiar estado" onclick="modalCambiarEstadoOT('${ot.ID_OT}','${ot.ESTADO}')"><i class="fas fa-exchange-alt"></i></button>
+          <button class="btn btn-sm btn-primary" title="Registrar horas" onclick="modalRegistrarHoras('${ot.ID_OT}')"><i class="fas fa-clock"></i></button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function renderCardsOT(data) {
+  if (!data.length) return `<div class="empty-state"><i class="fas fa-bolt"></i><h4>Sin OT</h4></div>`;
+  return `<div class="ot-grid">${data.map(ot => `
+    <div class="ot-card" onclick="verDetalleOT('${ot.ID_OT}')">
+      <div class="ot-card-header">
+        <span class="ot-card-id">${ot.ID_OT}</span>
+        ${estadoPill(ot.ESTADO)}
+      </div>
+      <div class="ot-card-body">
+        <div><i class="fas fa-tools" style="color:var(--ops-orange);margin-right:5px"></i><strong>Servicio:</strong> ${ot.SERVICIO || '—'}</div>
+        <div><i class="fas fa-user-hard-hat" style="color:var(--blue);margin-right:5px"></i><strong>Técnico:</strong> ${ot.TECNICO || '—'}</div>
+        <div><i class="fas fa-calendar" style="color:var(--text-muted);margin-right:5px"></i>${fmtFecha(ot.FECHA_PROGRAMADA)}</div>
+      </div>
+      <div class="ot-card-footer">
+        <span style="font-size:12px;color:var(--text-muted)"><i class="fas fa-clock"></i> ${ot.HORAS_TRABAJADAS||0}h trabajadas</span>
+        <div onclick="event.stopPropagation()" style="display:flex;gap:5px">
+          <button class="btn btn-sm btn-warning" onclick="modalCambiarEstadoOT('${ot.ID_OT}','${ot.ESTADO}')"><i class="fas fa-exchange-alt"></i></button>
+          <button class="btn btn-sm btn-primary" onclick="modalRegistrarHoras('${ot.ID_OT}')"><i class="fas fa-clock"></i></button>
+        </div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function formNuevaOT(idServicio = '', clienteRef = '') {
+  openModal('Nueva Orden de Trabajo', `
+    <div class="form-grid">
+      <div class="f-group"><label>Servicio Asociado *</label><input id="otServicio" value="${idServicio}" placeholder="ID del servicio (ej: SRV-001)"/></div>
+      <div class="f-group"><label>Técnico Asignado *</label><input id="otTecnico" placeholder="Nombre del técnico"/></div>
+      <div class="f-group"><label>Fecha Programada</label><input id="otFecha" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+      <div class="f-group"><label>Estado</label>
+        <select id="otEstado">
+          <option>Pendiente</option><option>En Proceso</option>
+        </select>
+      </div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: '<i class="fas fa-bolt"></i> Crear OT', cls: 'btn-orange', action: 'guardarNuevaOT()' }
+    ]);
+}
+
+async function guardarNuevaOT() {
+  const datos = {
+    SERVICIO: v('otServicio'), TECNICO: v('otTecnico'),
+    FECHA_PROGRAMADA: v('otFecha'), ESTADO: v('otEstado')
+  };
+  if (!datos.SERVICIO || !datos.TECNICO) { toast('Servicio y técnico son requeridos.', 'warning'); return; }
+  const res = await callApi('ORDENES_TRABAJO', 'crear', datos);
+  if (res.ok) { toast(`OT ${res.datos.id} creada.`, 'success'); closeModal(); ordenes(); }
+  else toast(res.mensaje, 'error');
+}
+
+async function verDetalleOT(idOT) {
+  openModal(`Detalle OT: ${idOT}`, `<div class="empty-state" style="padding:30px"><i class="fas fa-spinner fa-spin"></i><h4>Cargando...</h4></div>`, [], true);
+  const res = await callApi('ORDENES_TRABAJO', 'obtener', { idOT });
+  if (!res.ok) { document.getElementById('modalBody').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>${res.mensaje}</p></div>`; return; }
+  const { ot, actividades, materiales, evidencias } = res.datos;
+
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Técnico</div>
+        <div style="font-size:14px;font-weight:700;color:var(--navy)">${ot.TECNICO || '—'}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Estado</div>
+        ${estadoPill(ot.ESTADO)}
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Servicio</div>
+        <div style="font-size:13px;color:var(--text-mid)">${ot.SERVICIO || '—'}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Horas</div>
+        <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue)">${ot.HORAS_TRABAJADAS || 0}h</div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Fecha Programada</div>
+        <div style="font-size:13px">${fmtFecha(ot.FECHA_PROGRAMADA)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Firma Cliente</div>
+        <div style="font-size:13px">${ot.FIRMA_CLIENTE || '—'}</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px"><i class="fas fa-list-check" style="color:var(--ops-orange);margin-right:6px"></i>Actividades (${actividades.length})</div>
+      ${actividades.length === 0
+        ? '<p style="font-size:13px;color:var(--text-muted)">Sin actividades registradas.</p>'
+        : `<div style="display:flex;flex-direction:column;gap:6px">
+            ${actividades.map(a => `
+              <div style="background:var(--bg);border-radius:8px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:13px;font-weight:600">${a.DESCRIPCION}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">${fmtFecha(a.FECHA)} ${a.DURACION ? '· '+a.DURACION : ''}</div>
+                </div>
+              </div>`).join('')}
+          </div>`}
+      <button class="btn btn-sm btn-secondary" style="margin-top:10px" onclick="formAgregarActividad('${idOT}')">
+        <i class="fas fa-plus"></i> Agregar actividad
+      </button>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px"><i class="fas fa-boxes" style="color:var(--blue);margin-right:6px"></i>Materiales Consumidos (${materiales.length})</div>
+      ${materiales.length === 0
+        ? '<p style="font-size:13px;color:var(--text-muted)">Sin consumo de materiales.</p>'
+        : `<div class="table-wrap"><table style="font-size:12.5px">
+            <thead><tr><th>Item</th><th>Cantidad</th></tr></thead>
+            <tbody>${materiales.map(m => `<tr><td>${m.ITEM}</td><td>${m.CANTIDAD}</td></tr>`).join('')}</tbody>
+          </table></div>`}
+      <button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="formRegistrarConsumo('${idOT}')">
+        <i class="fas fa-plus"></i> Registrar consumo
+      </button>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px"><i class="fas fa-camera" style="color:var(--success);margin-right:6px"></i>Evidencias (${evidencias.length})</div>
+      ${evidencias.length === 0
+        ? '<p style="font-size:13px;color:var(--text-muted)">Sin evidencias.</p>'
+        : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            ${evidencias.map(e => `
+              <div style="background:var(--bg);border-radius:8px;padding:8px 10px;font-size:12.5px">
+                <div style="font-weight:600">${e.TIPO}</div>
+                <div style="color:var(--text-muted)">${fmtFecha(e.FECHA)}</div>
+                <div style="color:var(--text-muted)">${e.OBSERVACIONES||''}</div>
+              </div>`).join('')}
+          </div>`}
+      <button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="formRegistrarEvidencia('${idOT}')">
+        <i class="fas fa-camera"></i> Agregar evidencia
+      </button>
+    </div>`;
+
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>
+    <button class="btn btn-warning" onclick="modalCambiarEstadoOT('${idOT}','${ot.ESTADO}')"><i class="fas fa-exchange-alt"></i> Cambiar Estado</button>
+    <button class="btn btn-primary" onclick="modalRegistrarHoras('${idOT}')"><i class="fas fa-clock"></i> Horas</button>
+    ${ot.ESTADO !== 'Cerrada' ? `<button class="btn btn-success" onclick="generarActaEntrega('${idOT}','')"><i class="fas fa-file-signature"></i> Cerrar OT</button>` : ''}`;
+}
+
+function modalCambiarEstadoOT(idOT, estadoActual) {
+  openModal('Cambiar Estado de OT', `
+    <p style="margin-bottom:14px">OT: <strong>${idOT}</strong> — Actual: ${estadoPill(estadoActual)}</p>
+    <div class="form-grid">
+      <div class="f-group"><label>Nuevo Estado</label>
+        <select id="nuevoEstadoOT">
+          ${['Pendiente','En Proceso','En Revisión','Cerrada','Cancelado'].map(e=>`<option ${e===estadoActual?'selected':''}>${e}</option>`).join('')}
+        </select>
+      </div>
+      <div class="f-group full"><label>Observaciones</label><textarea id="obsEstadoOT" placeholder="Motivo del cambio..."></textarea></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Confirmar', cls: 'btn-primary', action: `confirmarEstadoOT('${idOT}')` }
+    ]);
+}
+
+async function confirmarEstadoOT(idOT) {
+  const estado = v('nuevoEstadoOT');
+  const observaciones = v('obsEstadoOT');
+  const res = await callApi('ORDENES_TRABAJO', 'cambiarEstado', { idOT, estado, observaciones });
+  if (res.ok) { toast(res.mensaje, 'success'); closeModal(); ordenes(); }
+  else toast(res.mensaje, 'error');
+}
+
+function modalRegistrarHoras(idOT) {
+  openModal('Registrar Horas Trabajadas', `
+    <p style="margin-bottom:14px;color:var(--text-mid)">OT: <strong>${idOT}</strong></p>
+    <div class="f-group">
+      <label>Horas a agregar *</label>
+      <input id="horasInput" type="number" min="0.5" step="0.5" placeholder="Ej: 4.5"/>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: '<i class="fas fa-clock"></i> Registrar', cls: 'btn-primary', action: `confirmarHoras('${idOT}')` }
+    ]);
+}
+
+async function confirmarHoras(idOT) {
+  const horas = parseFloat(v('horasInput'));
+  if (!horas || horas <= 0) { toast('Ingresa un número de horas válido.', 'warning'); return; }
+  const res = await callApi('ORDENES_TRABAJO', 'registrarHoras', { idOT, horas });
+  if (res.ok) { toast(`Horas registradas. Total: ${res.datos.horasTotales}h`, 'success'); closeModal(); ordenes(); }
+  else toast(res.mensaje, 'error');
+}
+
+function formAgregarActividad(idOT) {
+  openModal('Agregar Actividad', `
+    <div class="form-grid">
+      <div class="f-group full"><label>Descripción *</label><textarea id="actDesc" placeholder="Describe la actividad realizada..."></textarea></div>
+      <div class="f-group"><label>Duración</label><input id="actDuracion" placeholder="Ej: 2 horas"/></div>
+      <div class="f-group"><label>Fecha</label><input id="actFecha" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Guardar', cls: 'btn-primary', action: `guardarActividad('${idOT}')` }
+    ]);
+}
+
+async function guardarActividad(idOT) {
+  const datos = { OT: idOT, DESCRIPCION: v('actDesc'), DURACION: v('actDuracion'), FECHA: v('actFecha') };
+  if (!datos.DESCRIPCION) { toast('La descripción es requerida.', 'warning'); return; }
+  const res = await callApi('ACTIVIDADES', 'crear', datos);
+  if (res.ok) { toast('Actividad registrada.', 'success'); closeModal(); verDetalleOT(idOT); }
+  else toast(res.mensaje, 'error');
+}
+
+function formRegistrarConsumo(idOT) {
+  openModal('Registrar Consumo de Material', `
+    <div class="form-grid">
+      <div class="f-group full"><label>Item / Material *</label><input id="cnsItem" placeholder="Nombre del material o ID de inventario"/></div>
+      <div class="f-group"><label>Cantidad *</label><input id="cnsCantidad" type="number" min="1" placeholder="Cantidad usada"/></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Registrar', cls: 'btn-primary', action: `guardarConsumo('${idOT}')` }
+    ]);
+}
+
+async function guardarConsumo(idOT) {
+  const datos = { OT: idOT, ITEM: v('cnsItem'), CANTIDAD: v('cnsCantidad') };
+  if (!datos.ITEM || !datos.CANTIDAD) { toast('Item y cantidad son requeridos.', 'warning'); return; }
+  const res = await callApi('CONSUMO', 'registrar', datos);
+  if (res.ok) { toast('Consumo registrado.', 'success'); closeModal(); verDetalleOT(idOT); }
+  else toast(res.mensaje, 'error');
+}
+
+function formRegistrarEvidencia(idOT) {
+  openModal('Agregar Evidencia', `
+    <div class="form-grid">
+      <div class="f-group"><label>Tipo *</label>
+        <select id="evdTipo">
+          <option>Foto</option><option>Video</option><option>Documento</option><option>Firma</option><option>Otro</option>
+        </select>
+      </div>
+      <div class="f-group"><label>Archivo / URL</label><input id="evdArchivo" placeholder="Link a Drive, foto, etc."/></div>
+      <div class="f-group full"><label>Observaciones</label><textarea id="evdObs" placeholder="Notas sobre esta evidencia..."></textarea></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: '<i class="fas fa-camera"></i> Registrar', cls: 'btn-success', action: `guardarEvidencia('${idOT}')` }
+    ]);
+}
+
+async function guardarEvidencia(idOT) {
+  const datos = { OT: idOT, TIPO: v('evdTipo'), ARCHIVO: v('evdArchivo'), OBSERVACIONES: v('evdObs') };
+  const res = await callApi('EVIDENCIAS', 'registrar', datos);
+  if (res.ok) { toast('Evidencia registrada.', 'success'); closeModal(); verDetalleOT(idOT); }
+  else toast(res.mensaje, 'error');
+}
+
+async function generarActaEntrega(idOT, cliente) {
+  openModal('Generar Acta de Entrega', `
+    <p style="margin-bottom:14px;color:var(--text-mid)">Esto cerrará la OT <strong>${idOT}</strong> y generará el acta de entrega.</p>
+    <div class="form-grid">
+      <div class="f-group"><label>Cliente *</label><input id="actaCliente" value="${cliente}" placeholder="Nombre del cliente"/></div>
+      <div class="f-group"><label>Firma / Recibido por</label><input id="actaFirma" placeholder="Nombre de quien recibe"/></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: '<i class="fas fa-file-signature"></i> Generar Acta y Cerrar OT', cls: 'btn-success', action: `confirmarActa('${idOT}')` }
+    ]);
+}
+
+async function confirmarActa(idOT) {
+  const datos = { OT: idOT, CLIENTE: v('actaCliente'), FIRMA: v('actaFirma') };
+  if (!datos.CLIENTE) { toast('El cliente es requerido.', 'warning'); return; }
+  const res = await callApi('ACTAS', 'crear', datos);
+  if (res.ok) { toast(res.mensaje, 'success'); closeModal(); ordenes(); }
+  else toast(res.mensaje, 'error');
+}
+
+// ============================================================
+// VISTA: VISITAS TÉCNICAS
+// ============================================================
+async function visitas() {
+  mainContent(`<div class="card"><div class="card-header"><h3>Cargando...</h3></div><div class="card-body">${skeletonTable(['ID','Cliente','Técnico','Fecha','Resultado'])}</div></div>`);
+  const res = await callApi('VISITAS', 'listar', {});
+  const lista = res.ok ? res.datos : [];
+
+  mainContent(`
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-map-marker-alt" style="color:var(--ops-orange);margin-right:8px"></i>Visitas Técnicas</h3>
+      <button class="btn btn-orange" onclick="formNuevaVisita()"><i class="fas fa-plus"></i> Registrar Visita</button>
+    </div>
+    <div class="card-body" style="padding-top:14px">
+      <div class="toolbar">
+        <div class="search-box"><i class="fas fa-search"></i>
+          <input type="text" placeholder="Buscar por cliente, técnico..." oninput="filtrarTabla(this,'tblVisitas')"/>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="tblVisitas">
+          <thead><tr><th>ID Visita</th><th>Cliente</th><th>Técnico</th><th>Fecha</th><th>Resultado</th><th>Acciones</th></tr></thead>
+          <tbody>
+            ${lista.length === 0
+              ? `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-map-marker-alt"></i><h4>Sin visitas</h4><p>Registra la primera visita técnica.</p></div></td></tr>`
+              : lista.map(v => `<tr>
+                <td class="td-mono">${v.ID_VISITA}</td>
+                <td style="font-weight:600">${v.CLIENTE}</td>
+                <td>${v.TECNICO || '—'}</td>
+                <td style="font-size:12px">${fmtFecha(v.FECHA)}</td>
+                <td>${v.RESULTADO ? `<span class="pill pill-info">${v.RESULTADO}</span>` : '—'}</td>
+                <td><button class="btn btn-sm btn-secondary" onclick="editarVisita('${v.ID_VISITA}','${v.RESULTADO||''}')"><i class="fas fa-edit"></i></button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`);
+}
+
+function formNuevaVisita() {
+  openModal('Registrar Visita Técnica', `
+    <div class="form-grid">
+      <div class="f-group"><label>Cliente *</label><input id="visCliente" placeholder="Nombre del cliente"/></div>
+      <div class="f-group"><label>Técnico *</label><input id="visTecnico" placeholder="Técnico que realiza la visita"/></div>
+      <div class="f-group"><label>Fecha *</label><input id="visFecha" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+      <div class="f-group"><label>Resultado</label>
+        <select id="visResultado">
+          <option value="">Pendiente</option><option>Diagnóstico completado</option>
+          <option>Requiere OT</option><option>Sin novedad</option><option>Cliente ausente</option>
+        </select>
+      </div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: '<i class="fas fa-map-pin"></i> Registrar', cls: 'btn-orange', action: 'guardarVisita()' }
+    ]);
+}
+
+async function guardarVisita() {
+  const datos = { CLIENTE: v('visCliente'), TECNICO: v('visTecnico'), FECHA: v('visFecha'), RESULTADO: v('visResultado') };
+  if (!datos.CLIENTE || !datos.TECNICO || !datos.FECHA) { toast('Cliente, técnico y fecha son requeridos.', 'warning'); return; }
+  const res = await callApi('VISITAS', 'crear', datos);
+  if (res.ok) { toast('Visita registrada.', 'success'); closeModal(); visitas(); }
+  else toast(res.mensaje, 'error');
+}
+
+async function editarVisita(idVisita, resultadoActual) {
+  openModal('Actualizar Resultado Visita', `
+    <p style="margin-bottom:12px">Visita: <strong>${idVisita}</strong></p>
+    <div class="f-group">
+      <label>Resultado</label>
+      <select id="visResUpd">
+        ${['Pendiente','Diagnóstico completado','Requiere OT','Sin novedad','Cliente ausente'].map(r=>`<option ${r===resultadoActual?'selected':''}>${r}</option>`).join('')}
+      </select>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Guardar', cls: 'btn-primary', action: `confirmarVisita('${idVisita}')` }
+    ]);
+}
+
+async function confirmarVisita(idVisita) {
+  const res = await callApi('VISITAS', 'actualizar', { ID_VISITA: idVisita, RESULTADO: v('visResUpd') });
+  if (res.ok) { toast('Visita actualizada.', 'success'); closeModal(); visitas(); }
+  else toast(res.mensaje, 'error');
+}
+
+// ============================================================
+// VISTA: PROGRAMACIÓN
+// ============================================================
+async function programacion() {
+  mainContent(`<div class="card"><div class="card-header"><h3>Cargando...</h3></div><div class="card-body">${skeletonTable(['ID','Empleado','Fecha','Inicio','Fin','OT'])}</div></div>`);
+  const res = await callApi('PROGRAMACION', 'listar', {});
+  const lista = res.ok ? res.datos : [];
+
+  mainContent(`
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-calendar-alt" style="color:var(--ops-orange);margin-right:8px"></i>Programación de Personal</h3>
+      <button class="btn btn-orange" onclick="formNuevaProgramacion()"><i class="fas fa-plus"></i> Programar</button>
+    </div>
+    <div class="card-body" style="padding-top:14px">
+      <div class="toolbar">
+        <div class="search-box"><i class="fas fa-search"></i>
+          <input type="text" placeholder="Buscar empleado, OT..." oninput="filtrarTabla(this,'tblProg')"/>
+        </div>
+        <input type="date" class="filter-sel" id="filtroProgFecha" onchange="filtrarProgFecha(this.value)" title="Filtrar por fecha"/>
+      </div>
+      <div class="table-wrap">
+        <table id="tblProg">
+          <thead><tr><th>ID</th><th>Empleado</th><th>Fecha</th><th>Hora Inicio</th><th>Hora Fin</th><th>OT Asignada</th><th>Acciones</th></tr></thead>
+          <tbody>
+            ${lista.length === 0
+              ? `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-calendar-alt"></i><h4>Sin programación</h4><p>Programa el primer turno.</p></div></td></tr>`
+              : lista.map(p => `<tr>
+                <td class="td-mono">${p.ID_PROGRAMACION}</td>
+                <td style="font-weight:600">${p.EMPLEADO}</td>
+                <td>${fmtFecha(p.FECHA)}</td>
+                <td><span class="pill pill-info">${p.HORA_INICIO || '—'}</span></td>
+                <td><span class="pill pill-navy">${p.HORA_FIN || '—'}</span></td>
+                <td>${p.OT ? `<span class="td-mono">${p.OT}</span>` : '—'}</td>
+                <td><button class="btn btn-sm btn-danger" onclick="eliminarProgramacion('${p.ID_PROGRAMACION}')"><i class="fas fa-trash"></i></button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`);
+}
+
+async function filtrarProgFecha(fecha) {
+  if (!fecha) { programacion(); return; }
+  const res = await callApi('PROGRAMACION', 'porFecha', { fecha });
+  const lista = res.ok ? res.datos : [];
+  document.querySelector('#tblProg tbody').innerHTML = lista.length === 0
+    ? `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Sin programación para esta fecha.</td></tr>`
+    : lista.map(p => `<tr>
+        <td class="td-mono">${p.ID_PROGRAMACION}</td>
+        <td style="font-weight:600">${p.EMPLEADO}</td>
+        <td>${fmtFecha(p.FECHA)}</td>
+        <td><span class="pill pill-info">${p.HORA_INICIO || '—'}</span></td>
+        <td><span class="pill pill-navy">${p.HORA_FIN || '—'}</span></td>
+        <td>${p.OT ? `<span class="td-mono">${p.OT}</span>` : '—'}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="eliminarProgramacion('${p.ID_PROGRAMACION}')"><i class="fas fa-trash"></i></button></td>
+      </tr>`).join('');
+}
+
+function formNuevaProgramacion() {
+  openModal('Programar Personal', `
+    <div class="form-grid">
+      <div class="f-group"><label>Empleado *</label><input id="progEmp" placeholder="Nombre del empleado o técnico"/></div>
+      <div class="f-group"><label>Fecha *</label><input id="progFecha" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+      <div class="f-group"><label>Hora Inicio *</label><input id="progInicio" type="time" value="07:00"/></div>
+      <div class="f-group"><label>Hora Fin *</label><input id="progFin" type="time" value="17:00"/></div>
+      <div class="f-group full"><label>OT Asignada (opcional)</label><input id="progOT" placeholder="Ej: OT-001"/></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: '<i class="fas fa-calendar-plus"></i> Programar', cls: 'btn-orange', action: 'guardarProgramacion()' }
+    ]);
+}
+
+async function guardarProgramacion() {
+  const datos = { EMPLEADO: v('progEmp'), FECHA: v('progFecha'), HORA_INICIO: v('progInicio'), HORA_FIN: v('progFin'), OT: v('progOT') };
+  if (!datos.EMPLEADO || !datos.FECHA || !datos.HORA_INICIO || !datos.HORA_FIN) { toast('Empleado, fecha y horario son requeridos.', 'warning'); return; }
+  const res = await callApi('PROGRAMACION', 'crear', datos);
+  if (res.ok) { toast('Programación creada.', 'success'); closeModal(); programacion(); }
+  else toast(res.mensaje, 'error');
+}
+
+async function eliminarProgramacion(id) {
+  if (!confirm(`¿Eliminar la programación ${id}?`)) return;
+  const res = await callApi('PROGRAMACION', 'eliminar', { idProgramacion: id });
+  if (res.ok) { toast('Programación eliminada.', 'success'); programacion(); }
+  else toast(res.mensaje, 'error');
+}
+
+// ============================================================
+// VISTA: CUADRILLAS
+// ============================================================
+async function cuadrillas() {
+  const res = await callApi('CUADRILLAS', 'listar', {});
+  const lista = res.ok ? res.datos : [];
+
+  mainContent(`
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-users-cog" style="color:var(--ops-orange);margin-right:8px"></i>Cuadrillas de Trabajo</h3>
+      <button class="btn btn-orange" onclick="formNuevaCuadrilla()"><i class="fas fa-plus"></i> Nueva Cuadrilla</button>
+    </div>
+    <div class="card-body" style="padding-top:14px">
+      ${lista.length === 0
+        ? `<div class="empty-state"><i class="fas fa-users-cog"></i><h4>Sin cuadrillas</h4><p>Crea tu primera cuadrilla de trabajo.</p></div>`
+        : `<div class="config-grid">
+            ${lista.map(c => `
+              <div class="config-item">
+                <div class="config-item-icon" style="background:var(--navy)"><i class="fas fa-hard-hat"></i></div>
+                <h4>${c.NOMBRE}</h4>
+                <p><strong>Líder:</strong> ${c.LIDER}</p>
+                <p style="margin-top:4px"><strong>Miembros:</strong> ${c.MIEMBROS || 'Sin definir'}</p>
+                <div style="margin-top:10px;display:flex;gap:6px">
+                  <button class="btn btn-sm btn-secondary" onclick="editarCuadrilla('${c.ID_CUADRILLA}','${c.NOMBRE}','${c.LIDER}','${(c.MIEMBROS||'').replace(/'/g,'&#39;')}')">
+                    <i class="fas fa-edit"></i> Editar
+                  </button>
+                </div>
+              </div>`).join('')}
+          </div>`}
+    </div>
+  </div>`);
+}
+
+function formNuevaCuadrilla() {
+  openModal('Nueva Cuadrilla', `
+    <div class="form-grid">
+      <div class="f-group"><label>Nombre *</label><input id="cuaNombre" placeholder="Ej: Cuadrilla A"/></div>
+      <div class="f-group"><label>Líder *</label><input id="cuaLider" placeholder="Nombre del líder"/></div>
+      <div class="f-group full"><label>Miembros</label><textarea id="cuaMiembros" placeholder="Nombres separados por comas..."></textarea></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Guardar', cls: 'btn-orange', action: 'guardarCuadrilla()' }
+    ]);
+}
+
+async function guardarCuadrilla() {
+  const datos = { NOMBRE: v('cuaNombre'), LIDER: v('cuaLider'), MIEMBROS: v('cuaMiembros') };
+  if (!datos.NOMBRE || !datos.LIDER) { toast('Nombre y líder son requeridos.', 'warning'); return; }
+  const res = await callApi('CUADRILLAS', 'crear', datos);
+  if (res.ok) { toast('Cuadrilla creada.', 'success'); closeModal(); cuadrillas(); }
+  else toast(res.mensaje, 'error');
+}
+
+function editarCuadrilla(id, nombre, lider, miembros) {
+  openModal('Editar Cuadrilla', `
+    <div class="form-grid">
+      <div class="f-group"><label>Nombre *</label><input id="cuaEdiNombre" value="${nombre}"/></div>
+      <div class="f-group"><label>Líder *</label><input id="cuaEdiLider" value="${lider}"/></div>
+      <div class="f-group full"><label>Miembros</label><textarea id="cuaEdiMiembros">${miembros}</textarea></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Guardar', cls: 'btn-primary', action: `confirmarEditCuadrilla('${id}')` }
+    ]);
+}
+
+async function confirmarEditCuadrilla(id) {
+  const datos = { ID_CUADRILLA: id, NOMBRE: v('cuaEdiNombre'), LIDER: v('cuaEdiLider'), MIEMBROS: v('cuaEdiMiembros') };
+  const res = await callApi('CUADRILLAS', 'actualizar', datos);
+  if (res.ok) { toast('Cuadrilla actualizada.', 'success'); closeModal(); cuadrillas(); }
+  else toast(res.mensaje, 'error');
+}
+
+// ============================================================
+// VISTA: ACTAS DE ENTREGA
+// ============================================================
+async function actas() {
+  const res = await callApi('ACTAS', 'listar', {});
+  const lista = res.ok ? res.datos : [];
+
+  mainContent(`
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-file-signature" style="color:var(--ops-orange);margin-right:8px"></i>Actas de Entrega</h3>
+    </div>
+    <div class="card-body" style="padding-top:14px">
+      <div class="toolbar">
+        <div class="search-box"><i class="fas fa-search"></i>
+          <input type="text" placeholder="Buscar acta, OT, cliente..." oninput="filtrarTabla(this,'tblActas')"/>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="tblActas">
+          <thead><tr><th>ID Acta</th><th>OT</th><th>Fecha</th><th>Cliente</th><th>Firma</th></tr></thead>
+          <tbody>
+            ${lista.length === 0
+              ? `<tr><td colspan="5"><div class="empty-state"><i class="fas fa-file-signature"></i><h4>Sin actas</h4><p>Las actas se generan al cerrar una OT.</p></div></td></tr>`
+              : lista.map(a => `<tr>
+                <td class="td-mono">${a.ID_ACTA}</td>
+                <td class="td-mono">${a.OT || '—'}</td>
+                <td>${fmtFecha(a.FECHA)}</td>
+                <td style="font-weight:600">${a.CLIENTE || '—'}</td>
+                <td>${a.FIRMA ? `<span class="pill pill-success"><i class="fas fa-check"></i> ${a.FIRMA}</span>` : '—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`);
+}
+
+// ============================================================
+// VISTA: SISTEMA
+// ============================================================
+function sistema() {
+  mainContent(`
+  <div style="margin-bottom:18px">
+    <h3 style="font-size:16px;font-weight:700;color:var(--navy)">Administración del Sistema</h3>
+    <p style="font-size:13px;color:var(--text-muted)">Herramientas de configuración y mantenimiento del módulo de operaciones</p>
+  </div>
+  <div class="config-grid">
+    ${[
+      ['fas fa-play-circle','Inicializar Sistema','Crea las hojas del sistema si no existen.','navy','btnSistemaInit()'],
+      ['fas fa-paint-brush','Formatear Hojas','Aplica formato profesional a todas las hojas.','blue','btnSistemaFormat()'],
+      ['fas fa-chart-bar','Actualizar Dashboard','Recalcula todos los KPIs.','orange','navigate(\'dashboard\')'],
+      ['fas fa-database','Ver Estructura','Muestra las hojas del sistema.','success','btnVerEstructura()'],
+    ].map(([icon,title,desc,color,action]) => `
+      <div class="config-item">
+        <div class="config-item-icon" style="background:var(--${color})"><i class="${icon}"></i></div>
+        <h4>${title}</h4>
+        <p>${desc}</p>
+        <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="${action}">
+          <i class="${icon}"></i> Ejecutar
+        </button>
+      </div>`).join('')}
+  </div>
+  <div class="card" style="margin-top:22px;max-width:640px">
+    <div class="card-header"><h3>Información del Sistema</h3></div>
+    <div class="card-body" style="padding:0">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+        ${[
+          ['Versión','ERP OPERACIONES v1.0.0'],
+          ['Motor','Google Apps Script'],
+          ['Base de datos','Google Sheets — ERP_OPERACIONES'],
+          ['Autenticación','Token + SHA-256 (30 min)'],
+          ['Auditoría','LOG_AUDITORIA (automático)'],
+          ['Módulos','Servicios · OT · Programación · Cuadrillas · Evidencias · Actas · Visitas'],
+          ['Frontend','GitHub Pages (HTML estático + JSONP)'],
+        ].map(([k,v]) => `<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:11px 20px;font-weight:600;color:var(--navy);width:40%">${k}</td>
+          <td style="padding:11px 20px;color:var(--text-mid);font-family:'DM Mono',monospace;font-size:12px">${v}</td>
+        </tr>`).join('')}
+      </table>
+    </div>
+  </div>`);
+}
+
+async function btnSistemaInit() {
+  if (!confirm('¿Inicializar el sistema? Se crearán las hojas necesarias.')) return;
+  const res = await callApi('SISTEMA', 'inicializar', {});
+  toast(res.ok ? res.mensaje : res.mensaje, res.ok ? 'success' : 'error');
+}
+
+async function btnSistemaFormat() {
+  const res = await callApi('SISTEMA', 'formatear', {});
+  toast(res.ok ? res.mensaje : res.mensaje, res.ok ? 'success' : 'error');
+}
+
+async function btnVerEstructura() {
+  const res = await callApi('SISTEMA', 'estructura', {});
+  if (!res.ok) { toast(res.mensaje, 'error'); return; }
+  openModal('Estructura del Sistema', `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${res.datos.map(h => `
+        <div style="background:var(--bg);border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <i class="fas fa-table" style="color:var(--blue);font-size:11px"></i>
+            <span style="font-family:'DM Mono',monospace;font-size:12.5px;font-weight:500">${h.nombre}</span>
+          </div>
+          <span style="font-size:11px;color:var(--text-muted)">${h.filas > 1 ? (h.filas-1)+' reg.' : 'vacía'}</span>
+        </div>`).join('')}
+    </div>`,
+    [{ label: 'Cerrar', cls: 'btn-secondary', action: 'closeModal()' }]);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  const savedToken = localStorage.getItem('erp_ops_token');
+  const savedSesion = localStorage.getItem('erp_ops_sesion');
+  if (savedToken && savedSesion) {
+    try {
+      APP.token = savedToken;
+      APP.sesion = JSON.parse(savedSesion);
+      initApp();
+      return;
+    } catch(e) {
+      localStorage.removeItem('erp_ops_token');
+      localStorage.removeItem('erp_ops_sesion');
+    }
+  }
+  document.getElementById('loginUser').focus();
+});
+</script>
+</body>
+</html>
