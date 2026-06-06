@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Portal Técnico | Grupo WEDM</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+<style>
+:root {
+  --navy: #0f1f5c;
+  --navy-mid: #1a2f7a;
+  --blue: #2952cc;
+  --accent: #f0a500;
+  --orange: #ea580c;
+  --orange-bg: #fff7ed;
+  --white: #ffffff;
+  --bg: #f4f6fb;
+  --bg2: #eef1f8;
+  --surface: #ffffff;
+  --border: #dde3f3;
+  --text: #111827;
+  --text-mid: #374151;
+  --text-muted: #6b7280;
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
+  --info: #0284c7;
+  --info-bg: #e0f2fe;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 2px 16px rgba(15,31,92,.09);
+  --shadow-md: 0 6px 28px rgba(15,31,92,.14);
+  --trans: .2s cubic-bezier(.4,0,.2,1);
+  --bottom-bar: 72px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  overflow-x: hidden;
+}
+button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+input, select, textarea { font-family: inherit; }
+
+/* ========== PANTALLA LOGIN ========== */
+#loginScreen {
+  position: fixed; inset: 0; z-index: 1000;
+  background: linear-gradient(160deg, var(--navy) 0%, #0c1a4e 50%, #1a0a2e 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 32px 24px;
+  animation: fadeIn .4s ease;
+}
+
+.login-pattern {
+  position: absolute; inset: 0; overflow: hidden; opacity: .04;
+  background-image: radial-gradient(circle, #fff 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.login-top {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  margin-bottom: 40px;
+}
+
+.login-icon {
+  width: 80px; height: 80px; border-radius: 24px;
+  background: linear-gradient(135deg, var(--orange), #fbbf24);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px; color: white;
+  box-shadow: 0 8px 32px rgba(234,88,12,.45);
+  margin-bottom: 18px;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.login-top h1 {
+  font-size: 26px; font-weight: 800; color: white; text-align: center;
+  letter-spacing: -.01em;
+}
+.login-top p {
+  font-size: 13px; color: rgba(255,255,255,.5); margin-top: 6px; text-align: center;
+}
+
+.login-card {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 24px; padding: 28px 24px; width: 100%;
+  backdrop-filter: blur(12px);
+}
+
+.f-login { margin-bottom: 16px; }
+.f-login label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.6); margin-bottom: 7px; letter-spacing: .05em; text-transform: uppercase; }
+.f-login .inp-wrap { position: relative; }
+.f-login .inp-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,.4); font-size: 14px; }
+.f-login input {
+  width: 100%; padding: 14px 14px 14px 42px;
+  background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.15);
+  border-radius: 12px; font-size: 15px; color: white;
+  transition: border-color var(--trans);
+}
+.f-login input::placeholder { color: rgba(255,255,255,.3); }
+.f-login input:focus { border-color: var(--orange); outline: none; background: rgba(255,255,255,.14); }
+
+.btn-login-main {
+  width: 100%; padding: 15px;
+  background: linear-gradient(135deg, var(--orange), #fbbf24);
+  color: white; font-size: 15px; font-weight: 700; border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(234,88,12,.4);
+  transition: all var(--trans); margin-top: 8px; letter-spacing: .01em;
+}
+.btn-login-main:active { transform: scale(.97); opacity: .9; }
+
+.login-err {
+  background: rgba(220,38,38,.2); border: 1px solid rgba(220,38,38,.4);
+  color: #fca5a5; border-radius: 10px; padding: 10px 14px;
+  font-size: 13px; margin-top: 12px; display: none; align-items: center; gap: 8px;
+}
+
+.login-version {
+  position: relative; z-index: 1;
+  font-size: 11px; color: rgba(255,255,255,.2);
+  margin-top: 24px; text-align: center;
+}
+
+/* ========== APP PRINCIPAL ========== */
+#app { display: none; padding-bottom: var(--bottom-bar); min-height: 100vh; }
+
+/* TOPBAR */
+.topbar {
+  background: var(--navy);
+  padding: 16px 20px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 16px rgba(15,31,92,.25);
+}
+.topbar-left { display: flex; flex-direction: column; }
+.topbar-greeting { font-size: 12px; color: rgba(255,255,255,.5); font-weight: 500; }
+.topbar-name { font-size: 17px; font-weight: 800; color: white; line-height: 1.2; }
+.topbar-badge {
+  background: linear-gradient(135deg, var(--orange), #fbbf24);
+  color: white; font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; padding: 3px 9px; border-radius: 20px; margin-top: 4px;
+  display: inline-block; width: fit-content;
+}
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.topbar-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--orange), #fbbf24);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 800; color: white;
+  box-shadow: 0 2px 12px rgba(234,88,12,.35);
+}
+.topbar-btn {
+  width: 38px; height: 38px; border-radius: 12px;
+  background: rgba(255,255,255,.1); color: rgba(255,255,255,.7);
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+  transition: all var(--trans);
+}
+.topbar-btn:active { background: rgba(255,255,255,.2); }
+
+/* CONTENT */
+.page { padding: 20px 16px; display: none; }
+.page.active { display: block; }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: white; border-top: 1px solid var(--border);
+  display: flex; z-index: 200;
+  box-shadow: 0 -4px 20px rgba(15,31,92,.1);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 10px 4px; gap: 4px;
+  cursor: pointer; transition: all var(--trans);
+  color: var(--text-muted); border: none; background: none;
+  font-family: inherit;
+}
+.nav-tab i { font-size: 18px; transition: all var(--trans); }
+.nav-tab span { font-size: 10px; font-weight: 600; letter-spacing: .02em; }
+.nav-tab.active { color: var(--orange); }
+.nav-tab.active i { transform: scale(1.1); }
+.nav-tab-badge {
+  position: absolute; top: 6px;
+  background: var(--danger); color: white;
+  font-size: 9px; font-weight: 700; border-radius: 10px;
+  padding: 2px 5px; min-width: 16px; text-align: center;
+  border: 2px solid white;
+}
+
+/* ========== SECTION HEADERS ========== */
+.section-title {
+  font-size: 18px; font-weight: 800; color: var(--navy);
+  margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+}
+.section-title i { color: var(--orange); font-size: 16px; }
+
+/* ========== CARDS ========== */
+.card {
+  background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+  overflow: hidden; margin-bottom: 14px;
+}
+.card-body { padding: 16px 18px; }
+
+/* Stat strip en dashboard */
+.stats-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat-mini {
+  background: white; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  padding: 14px 12px; box-shadow: var(--shadow); text-align: center;
+}
+.stat-mini-val {
+  font-size: 24px; font-weight: 800; color: var(--navy);
+  font-family: 'DM Mono', monospace; line-height: 1;
+}
+.stat-mini-label { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-top: 4px; }
+.stat-mini.orange .stat-mini-val { color: var(--orange); }
+.stat-mini.success .stat-mini-val { color: var(--success); }
+.stat-mini.info .stat-mini-val { color: var(--info); }
+
+/* OT CARD */
+.ot-card {
+  background: white; border-radius: var(--radius); border: 1px solid var(--border);
+  box-shadow: var(--shadow); padding: 16px 18px; margin-bottom: 12px;
+  cursor: pointer; transition: all var(--trans); position: relative;
+}
+.ot-card:active { transform: scale(.98); box-shadow: var(--shadow-md); }
+.ot-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.ot-card-id {
+  font-size: 13px; font-weight: 700; color: var(--blue);
+  font-family: 'DM Mono', monospace;
+}
+.ot-card-info { font-size: 13px; color: var(--text-mid); line-height: 1.7; }
+.ot-card-info span { color: var(--text-muted); font-size: 12px; }
+.ot-card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
+}
+.ot-hours {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 700; color: var(--navy);
+  font-family: 'DM Mono', monospace;
+}
+.ot-hours i { color: var(--orange); font-size: 12px; }
+
+/* PILL */
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.pill::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.pill-warning { background: var(--warning-bg); color: var(--warning); }
+.pill-info { background: var(--info-bg); color: var(--info); }
+.pill-success { background: var(--success-bg); color: var(--success); }
+.pill-orange { background: var(--orange-bg); color: var(--orange); }
+.pill-gray { background: #f3f4f6; color: #6b7280; }
+.pill-danger { background: var(--danger-bg); color: var(--danger); }
+
+/* BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 11px 20px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 700; transition: all var(--trans);
+  cursor: pointer; border: none; white-space: nowrap;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--navy); color: white; box-shadow: 0 2px 10px rgba(15,31,92,.22); }
+.btn-orange { background: var(--orange); color: white; box-shadow: 0 2px 10px rgba(234,88,12,.3); }
+.btn-success { background: var(--success); color: white; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-secondary { background: white; color: var(--navy); border: 1.5px solid var(--border); }
+.btn-sm { padding: 7px 14px; font-size: 12.5px; }
+.btn-full { width: 100%; justify-content: center; }
+.btn-warning { background: var(--warning); color: white; }
+
+/* FLOATING ADD BUTTON */
+.fab {
+  position: fixed; bottom: calc(var(--bottom-bar) + 16px); right: 20px;
+  width: 54px; height: 54px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--orange), #fbbf24);
+  color: white; font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 24px rgba(234,88,12,.45); z-index: 150;
+  transition: all var(--trans); cursor: pointer; border: none;
+}
+.fab:active { transform: scale(.92); }
+.fab.hidden { display: none; }
+
+/* MODAL BOTTOM SHEET */
+.sheet-overlay {
+  position: fixed; inset: 0; background: rgba(15,31,92,.5);
+  z-index: 500; display: none; backdrop-filter: blur(3px);
+  animation: fadeIn .2s ease;
+}
+.sheet-overlay.open { display: block; }
+.bottom-sheet {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+  width: 100%; max-width: 480px; z-index: 600;
+  background: white; border-radius: 24px 24px 0 0;
+  padding: 0 0 env(safe-area-inset-bottom, 20px);
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
+  max-height: 92vh; overflow-y: auto;
+}
+.bottom-sheet.open { transform: translateX(-50%) translateY(0); }
+.sheet-handle {
+  width: 36px; height: 4px; background: var(--border); border-radius: 2px;
+  margin: 12px auto 0;
+}
+.sheet-header {
+  padding: 16px 20px 12px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: white; z-index: 1;
+}
+.sheet-header h3 { font-size: 16px; font-weight: 800; color: var(--navy); }
+.sheet-close {
+  width: 30px; height: 30px; border-radius: 8px; background: var(--bg);
+  color: var(--text-muted); font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.sheet-body { padding: 18px 20px; }
+.sheet-footer { padding: 12px 20px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+
+/* FORM FIELDS */
+.f-group { margin-bottom: 14px; }
+.f-group label { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-mid); margin-bottom: 6px; letter-spacing: .02em; }
+.f-group input, .f-group select, .f-group textarea {
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 14px; color: var(--text); background: var(--bg);
+  transition: border-color var(--trans);
+  -webkit-appearance: none; appearance: none;
+}
+.f-group input:focus, .f-group select:focus, .f-group textarea:focus {
+  border-color: var(--orange); outline: none; box-shadow: 0 0 0 3px rgba(234,88,12,.1);
+  background: white;
+}
+.f-group textarea { resize: none; min-height: 90px; }
+
+/* ALERT */
+.alert {
+  padding: 12px 16px; border-radius: var(--radius-sm);
+  font-size: 13.5px; font-weight: 500; display: flex; align-items: flex-start; gap: 10px;
+  margin-bottom: 14px;
+}
+.alert i { margin-top: 1px; flex-shrink: 0; }
+.alert-info { background: var(--info-bg); color: var(--info); }
+.alert-warning { background: var(--warning-bg); color: var(--warning); }
+.alert-success { background: var(--success-bg); color: var(--success); }
+.alert-danger { background: var(--danger-bg); color: var(--danger); }
+
+/* ACTIVITY ITEMS */
+.act-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.act-item:last-child { border-bottom: none; }
+.act-icon-wrap {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.act-icon-wrap.orange { background: var(--orange-bg); color: var(--orange); }
+.act-icon-wrap.success { background: var(--success-bg); color: var(--success); }
+.act-icon-wrap.info { background: var(--info-bg); color: var(--info); }
+.act-content { flex: 1; }
+.act-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.act-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.act-time { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; white-space: nowrap; }
+
+/* Detail view */
+.detail-header {
+  background: linear-gradient(135deg, var(--navy), #1a2f7a);
+  padding: 18px 20px; margin: -20px -16px 20px;
+}
+.detail-ot-id { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.6); font-family: 'DM Mono', monospace; }
+.detail-title { font-size: 19px; font-weight: 800; color: white; margin: 4px 0 10px; }
+.detail-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.detail-meta-item { background: rgba(255,255,255,.08); border-radius: 10px; padding: 10px 12px; }
+.detail-meta-label { font-size: 10px; color: rgba(255,255,255,.5); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.detail-meta-value { font-size: 13px; font-weight: 700; color: white; margin-top: 3px; }
+
+.section-sep { height: 1px; background: var(--border); margin: 16px 0; }
+
+/* Action chip row */
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all var(--trans); border: none; font-family: inherit;
+}
+.chip:active { transform: scale(.95); }
+.chip-blue { background: var(--info-bg); color: var(--info); }
+.chip-orange { background: var(--orange-bg); color: var(--orange); }
+.chip-success { background: var(--success-bg); color: var(--success); }
+.chip-danger { background: var(--danger-bg); color: var(--danger); }
+
+/* EMPTY */
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48px 20px; text-align: center; color: var(--text-muted);
+}
+.empty i { font-size: 36px; opacity: .25; margin-bottom: 12px; }
+.empty h4 { font-size: 15px; font-weight: 700; color: var(--text-mid); margin-bottom: 6px; }
+.empty p { font-size: 13px; line-height: 1.6; }
+
+/* SKELETON */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg) 25%, var(--bg2) 50%, var(--bg) 75%);
+  background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 10px;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* TOAST */
+#toastBox {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 2000; width: calc(100% - 32px); max-width: 440px;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  padding: 13px 18px; border-radius: 12px; font-size: 14px; font-weight: 600;
+  box-shadow: var(--shadow-md); display: flex; align-items: center; gap: 9px;
+  animation: toastIn .3s ease; pointer-events: all;
+}
+.toast.success { background: var(--success); color: white; }
+.toast.error { background: var(--danger); color: white; }
+.toast.info { background: var(--navy); color: white; }
+.toast.warning { background: var(--warning); color: white; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* LOADER */
+.loader-full {
+  position: fixed; inset: 0; background: var(--bg); z-index: 900;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px;
+}
+.loader-spinner {
+  width: 44px; height: 44px; border: 4px solid var(--border);
+  border-top-color: var(--orange); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.loader-full p { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* PROFILE */
+.profile-header {
+  background: linear-gradient(135deg, var(--navy), #0c1a4e);
+  border-radius: var(--radius); padding: 22px 20px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 16px;
+}
+.profile-avatar-lg {
+  width: 60px; height: 60px; border-radius: 18px;
+  background: linear-gradient(135deg, var(--orange), #fbbf24);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 800; color: white; flex-shrink: 0;
+}
+.profile-info h2 { font-size: 18px; font-weight: 800; color: white; }
+.profile-info p { font-size: 13px; color: rgba(255,255,255,.5); margin-top: 3px; }
+.profile-info .profile-rol {
+  display: inline-block; margin-top: 7px;
+  background: rgba(234,88,12,.3); color: #fbbf24;
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 20px;
+}
+
+.setting-item {
+  display: flex; align-items: center; gap: 14px; padding: 14px 0;
+  border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.setting-item:last-child { border-bottom: none; }
+.setting-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; flex-shrink: 0;
+}
+.setting-icon.orange { background: var(--orange-bg); color: var(--orange); }
+.setting-icon.danger { background: var(--danger-bg); color: var(--danger); }
+.setting-icon.navy { background: rgba(15,31,92,.08); color: var(--navy); }
+.setting-label { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); }
+.setting-arrow { color: var(--text-muted); font-size: 12px; }
+
+/* Firma canvas */
+.firma-wrap {
+  border: 2px dashed var(--border); border-radius: 12px; overflow: hidden;
+  background: var(--bg); cursor: crosshair; touch-action: none;
+}
+canvas#firmaCanvas { display: block; width: 100%; height: 160px; }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="loader-full" id="loaderFull">
+  <div class="loader-spinner"></div>
+  <p>Cargando portal técnico...</p>
+</div>
+
+<!-- LOGIN -->
+<div id="loginScreen" style="display:none">
+  <div class="login-pattern"></div>
+  <div class="login-top">
+    <div class="login-icon"><i class="fas fa-hard-hat"></i></div>
+    <h1>Portal Técnico</h1>
+    <p>Grupo WEDM · Operaciones</p>
+  </div>
+  <div class="login-card">
+    <div class="f-login">
+      <label>Usuario</label>
+      <div class="inp-wrap">
+        <i class="fas fa-user"></i>
+        <input id="loginUser" type="text" placeholder="Tu usuario" autocomplete="username" inputmode="text"/>
+      </div>
+    </div>
+    <div class="f-login">
+      <label>Contraseña</label>
+      <div class="inp-wrap">
+        <i class="fas fa-lock"></i>
+        <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+    </div>
+    <button class="btn-login-main" id="loginBtn" onclick="doLogin()">
+      <span id="loginBtnText"><i class="fas fa-sign-in-alt" style="margin-right:6px"></i>Iniciar Sesión</span>
+    </button>
+    <div class="login-err" id="loginErr">
+      <i class="fas fa-exclamation-circle"></i>
+      <span id="loginErrMsg">Error</span>
+    </div>
+  </div>
+  <div class="login-version">Portal Técnico v1.0 · Conectado al ERP Principal</div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-greeting" id="topGreeting">Buenos días</div>
+      <div class="topbar-name" id="topName">Técnico</div>
+      <div class="topbar-badge" id="topBadge">⚡ Operaciones</div>
+    </div>
+    <div class="topbar-right">
+      <button class="topbar-btn" onclick="refreshCurrent()" title="Actualizar">
+        <i class="fas fa-sync-alt" id="refreshIco"></i>
+      </button>
+      <div class="topbar-avatar" id="topAvatar">T</div>
+    </div>
+  </div>
+
+  <!-- PÁGINA: INICIO (DASHBOARD) -->
+  <div class="page active" id="page-inicio">
+    <div class="section-title" style="margin-top:4px">
+      <i class="fas fa-th-large"></i> Mis OTs de Hoy
+    </div>
+    <div class="stats-strip" id="dashStats">
+      <div class="stat-mini"><div class="skeleton" style="height:24px;border-radius:4px;margin-bottom:4px"></div><div class="skeleton" style="height:12px;border-radius:4px"></div></div>
+      <div class="stat-mini"><div class="skeleton" style="height:24px;border-radius:4px;margin-bottom:4px"></div><div class="skeleton" style="height:12px;border-radius:4px"></div></div>
+      <div class="stat-mini"><div class="skeleton" style="height:24px;border-radius:4px;margin-bottom:4px"></div><div class="skeleton" style="height:12px;border-radius:4px"></div></div>
+    </div>
+    <div id="dashOTs">
+      <div class="skeleton" style="height:130px;margin-bottom:12px"></div>
+      <div class="skeleton" style="height:130px;margin-bottom:12px"></div>
+    </div>
+  </div>
+
+  <!-- PÁGINA: MIS OTs -->
+  <div class="page" id="page-ots">
+    <div class="section-title" style="margin-top:4px">
+      <i class="fas fa-bolt"></i> Mis Órdenes de Trabajo
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px">
+      <button class="btn btn-sm btn-orange" id="filtroTodas" onclick="filtrarOTs('todas')">Todas</button>
+      <button class="btn btn-sm btn-secondary" id="filtroPendiente" onclick="filtrarOTs('Pendiente')">Pendientes</button>
+      <button class="btn btn-sm btn-secondary" id="filtroEnProceso" onclick="filtrarOTs('En Proceso')">En Proceso</button>
+      <button class="btn btn-sm btn-secondary" id="filtroCerrada" onclick="filtrarOTs('Cerrada')">Cerradas</button>
+    </div>
+    <div id="listaOTs">
+      <div class="skeleton" style="height:130px;margin-bottom:12px"></div>
+      <div class="skeleton" style="height:130px;margin-bottom:12px"></div>
+      <div class="skeleton" style="height:130px;margin-bottom:12px"></div>
+    </div>
+  </div>
+
+  <!-- PÁGINA: DETALLE OT (sub-page) -->
+  <div class="page" id="page-detalle">
+    <!-- Contenido dinámico -->
+  </div>
+
+  <!-- PÁGINA: PERFIL -->
+  <div class="page" id="page-perfil">
+    <div class="profile-header">
+      <div class="profile-avatar-lg" id="profAvatar">T</div>
+      <div class="profile-info">
+        <h2 id="profName">Técnico</h2>
+        <p id="profUser">@usuario</p>
+        <span class="profile-rol" id="profRol">Técnico</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="setting-item" onclick="mostrarInfoApp()">
+          <div class="setting-icon navy"><i class="fas fa-info-circle"></i></div>
+          <span class="setting-label">Acerca del Portal</span>
+          <i class="fas fa-chevron-right setting-arrow"></i>
+        </div>
+        <div class="setting-item" onclick="doLogout()">
+          <div class="setting-icon danger"><i class="fas fa-sign-out-alt"></i></div>
+          <span class="setting-label" style="color:var(--danger)">Cerrar Sesión</span>
+          <i class="fas fa-chevron-right setting-arrow" style="color:var(--danger)"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" id="bottomNav" style="display:none">
+  <button class="nav-tab active" id="tab-inicio" onclick="navegarA('inicio')">
+    <i class="fas fa-home"></i>
+    <span>Inicio</span>
+  </button>
+  <button class="nav-tab" id="tab-ots" onclick="navegarA('ots')" style="position:relative">
+    <i class="fas fa-bolt"></i>
+    <span>Mis OTs</span>
+    <span class="nav-tab-badge" id="otsBadge" style="display:none">0</span>
+  </button>
+  <button class="nav-tab" id="tab-perfil" onclick="navegarA('perfil')">
+    <i class="fas fa-user"></i>
+    <span>Perfil</span>
+  </button>
+</nav>
+
+<!-- BOTTOM SHEET GLOBAL -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="bottom-sheet" id="bottomSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <h3 id="sheetTitle">Título</h3>
+    <button class="sheet-close" onclick="closeSheet()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="sheet-body" id="sheetBody"></div>
+  <div class="sheet-footer" id="sheetFooter" style="display:none"></div>
+</div>
+
+<!-- FAB -->
+<button class="fab hidden" id="fabBtn" onclick="onFabClick()">
+  <i class="fas fa-plus"></i>
+</button>
+
+<!-- TOASTS -->
+<div id="toastBox"></div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const CFG = {
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwxTq1_MyRjNpaCAAYUxf5fuTbDK93oMZde_M2m87rrJs8kQZKNlytlpxCDbOSHuDkQ/exec',
+  token: null,
+  sesion: null,
+  currentPage: 'inicio',
+  misOTs: [],
+  filtroActual: 'todas',
+  otDetalle: null,
+};
+
+// ============================================================
+// CACHE
+// ============================================================
+const _cache = {};
+function cacheGet(k) {
+  const e = _cache[k];
+  if (!e || Date.now() - e.ts > 30000) return null;
+  return e.d;
+}
+function cacheSet(k, d) { _cache[k] = { d, ts: Date.now() }; }
+function cacheClear() { Object.keys(_cache).forEach(k => delete _cache[k]); }
+
+// ============================================================
+// API (JSONP — mismo mecanismo que index.html)
+// ============================================================
+function api(modulo, accion, datos = {}) {
+  return new Promise((resolve) => {
+    const cb = '_pt_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const payload = encodeURIComponent(JSON.stringify({ modulo, accion, datos, token: CFG.token }));
+    const url = CFG.SCRIPT_URL + '?callback=' + cb + '&payload=' + payload;
+
+    const timer = setTimeout(() => {
+      delete window[cb];
+      if (sc.parentNode) sc.parentNode.removeChild(sc);
+      resolve({ ok: false, mensaje: 'Tiempo de espera agotado.' });
+    }, 20000);
+
+    window[cb] = function(data) {
+      clearTimeout(timer);
+      delete window[cb];
+      if (sc.parentNode) sc.parentNode.removeChild(sc);
+      resolve(data);
+    };
+
+    const sc = document.createElement('script');
+    sc.src = url;
+    sc.onerror = () => { clearTimeout(timer); delete window[cb]; resolve({ ok: false, mensaje: 'Error de conexión.' }); };
+    document.head.appendChild(sc);
+  });
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  const errMsg = document.getElementById('loginErrMsg');
+  const btnTxt = document.getElementById('loginBtnText');
+
+  if (!u || !p) { errMsg.textContent = 'Ingresa usuario y contraseña.'; errEl.style.display = 'flex'; return; }
+
+  btnTxt.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>Verificando...';
+  errEl.style.display = 'none';
+
+  const res = await api('AUTH', 'login', { username: u, password: p });
+
+  if (res.ok) {
+    CFG.token = res.datos.token;
+    CFG.sesion = { username: u, rol: res.datos.rol, empleado: res.datos.empleado };
+    localStorage.setItem('pt_token', CFG.token);
+    localStorage.setItem('pt_sesion', JSON.stringify(CFG.sesion));
+    iniciarApp();
+  } else {
+    errMsg.textContent = res.mensaje || 'Credenciales incorrectas';
+    errEl.style.display = 'flex';
+    btnTxt.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:6px"></i>Iniciar Sesión';
+  }
+}
+
+async function doLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  await api('AUTH', 'logout', { token: CFG.token });
+  CFG.token = null; CFG.sesion = null;
+  localStorage.removeItem('pt_token'); localStorage.removeItem('pt_sesion');
+  cacheClear();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('bottomNav').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginBtnText').innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:6px"></i>Iniciar Sesión';
+}
+
+document.addEventListener('keydown', e => {
+  if (document.getElementById('loginScreen').style.display !== 'none' && e.key === 'Enter') doLogin();
+});
+
+// ============================================================
+// INIT
+// ============================================================
+function iniciarApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('bottomNav').style.display = 'flex';
+
+  const nombre = CFG.sesion.empleado || CFG.sesion.username || 'Técnico';
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
+
+  document.getElementById('topGreeting').textContent = saludo;
+  document.getElementById('topName').textContent = nombre;
+  document.getElementById('topAvatar').textContent = nombre.charAt(0).toUpperCase();
+  document.getElementById('profAvatar').textContent = nombre.charAt(0).toUpperCase();
+  document.getElementById('profName').textContent = nombre;
+  document.getElementById('profUser').textContent = '@' + CFG.sesion.username;
+  document.getElementById('profRol').textContent = CFG.sesion.rol || 'Técnico';
+
+  navegarA('inicio');
+  cargarMisOTs();
+}
+
+// ============================================================
+// NAVEGACIÓN
+// ============================================================
+function navegarA(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.add('active');
+  const tabEl = document.getElementById('tab-' + page);
+  if (tabEl) tabEl.classList.add('active');
+
+  CFG.currentPage = page;
+
+  const fab = document.getElementById('fabBtn');
+  fab.className = 'fab hidden'; // por defecto oculto
+
+  window.scrollTo(0, 0);
+}
+
+function refreshCurrent() {
+  const ico = document.getElementById('refreshIco');
+  ico.style.animation = 'spin .7s linear infinite';
+  setTimeout(() => ico.style.animation = '', 700);
+  cacheClear();
+  if (CFG.currentPage === 'inicio' || CFG.currentPage === 'ots') {
+    cargarMisOTs();
+  }
+}
+
+// ============================================================
+// CARGAR MIS OTs
+// ============================================================
+async function cargarMisOTs() {
+  const cached = cacheGet('misOTs');
+  if (cached) {
+    CFG.misOTs = cached;
+    renderDashboard();
+    renderListaOTs();
+    return;
+  }
+
+  // Mostrar skeletons
+  document.getElementById('dashOTs').innerHTML =
+    `<div class="skeleton" style="height:130px;margin-bottom:12px"></div>
+     <div class="skeleton" style="height:130px;margin-bottom:12px"></div>`;
+  document.getElementById('listaOTs').innerHTML =
+    `<div class="skeleton" style="height:130px;margin-bottom:12px"></div>
+     <div class="skeleton" style="height:130px;margin-bottom:12px"></div>
+     <div class="skeleton" style="height:130px;margin-bottom:12px"></div>`;
+
+  const res = await api('ORDENES_TRABAJO', 'listar', {});
+
+  if (!res.ok) {
+    const msg = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i>${res.mensaje || 'Error al cargar'}</div>`;
+    document.getElementById('dashOTs').innerHTML = msg;
+    document.getElementById('listaOTs').innerHTML = msg;
+    return;
+  }
+
+  // Filtrar solo las OTs asignadas a este técnico
+  const nombreTecnico = (CFG.sesion.empleado || CFG.sesion.username || '').toLowerCase();
+  const todas = res.datos || [];
+  const mias = todas.filter(ot => {
+    const tec = (ot.TECNICO || '').toLowerCase();
+    return tec === nombreTecnico || tec.includes(nombreTecnico.split(' ')[0]);
+  });
+
+  CFG.misOTs = mias.length > 0 ? mias : todas; // Si no hay filtro, mostrar todas (admin)
+  cacheSet('misOTs', CFG.misOTs);
+
+  // Badge
+  const pendientes = CFG.misOTs.filter(o => o.ESTADO === 'Pendiente' || o.ESTADO === 'En Proceso').length;
+  const badge = document.getElementById('otsBadge');
+  if (pendientes > 0) { badge.textContent = pendientes; badge.style.display = 'block'; }
+  else { badge.style.display = 'none'; }
+
+  renderDashboard();
+  renderListaOTs();
+}
+
+// ============================================================
+// RENDER DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const ots = CFG.misOTs;
+  const pendientes = ots.filter(o => o.ESTADO === 'Pendiente').length;
+  const enProceso = ots.filter(o => o.ESTADO === 'En Proceso').length;
+  const cerradas = ots.filter(o => o.ESTADO === 'Cerrada').length;
+  const horasTotal = ots.reduce((s, o) => s + (parseFloat(o.HORAS_TRABAJADAS) || 0), 0);
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-mini orange">
+      <div class="stat-mini-val">${pendientes}</div>
+      <div class="stat-mini-label">Pendientes</div>
+    </div>
+    <div class="stat-mini info">
+      <div class="stat-mini-val">${enProceso}</div>
+      <div class="stat-mini-label">En Proceso</div>
+    </div>
+    <div class="stat-mini success">
+      <div class="stat-mini-val">${horasTotal.toFixed(0)}h</div>
+      <div class="stat-mini-label">Mis Horas</div>
+    </div>`;
+
+  const hoy = new Date().toLocaleDateString('es-CO');
+  const otHoy = ots.filter(o => {
+    if (!o.FECHA_PROGRAMADA) return false;
+    return new Date(o.FECHA_PROGRAMADA).toLocaleDateString('es-CO') === hoy ||
+           (o.ESTADO === 'Pendiente' || o.ESTADO === 'En Proceso');
+  }).slice(0, 5);
+
+  if (otHoy.length === 0) {
+    document.getElementById('dashOTs').innerHTML = `
+      <div class="empty">
+        <i class="fas fa-bolt"></i>
+        <h4>Sin OTs activas</h4>
+        <p>No tienes órdenes de trabajo pendientes hoy.</p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('dashOTs').innerHTML = otHoy.map(ot => otCardHTML(ot)).join('');
+}
+
+// ============================================================
+// RENDER LISTA OTs
+// ============================================================
+function renderListaOTs() {
+  const filtro = CFG.filtroActual;
+  const ots = filtro === 'todas' ? CFG.misOTs : CFG.misOTs.filter(o => o.ESTADO === filtro);
+
+  if (ots.length === 0) {
+    document.getElementById('listaOTs').innerHTML = `
+      <div class="empty">
+        <i class="fas fa-bolt"></i>
+        <h4>Sin resultados</h4>
+        <p>No hay órdenes de trabajo ${filtro !== 'todas' ? 'con estado "' + filtro + '"' : ''}.</p>
+      </div>`;
+    return;
+  }
+  document.getElementById('listaOTs').innerHTML = ots.map(ot => otCardHTML(ot)).join('');
+}
+
+function filtrarOTs(filtro) {
+  CFG.filtroActual = filtro;
+  ['todas','Pendiente','En Proceso','Cerrada'].forEach(f => {
+    const id = 'filtro' + (f === 'todas' ? 'Todas' : f.replace(' ', ''));
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.className = 'btn btn-sm ' + (f === filtro ? 'btn-orange' : 'btn-secondary');
+    }
+  });
+  renderListaOTs();
+}
+
+function otCardHTML(ot) {
+  const pill = estadoPill(ot.ESTADO);
+  return `
+    <div class="ot-card" onclick="verOT('${ot.ID_OT}')">
+      <div class="ot-card-top">
+        <span class="ot-card-id">${ot.ID_OT}</span>
+        ${pill}
+      </div>
+      <div class="ot-card-info">
+        <strong>${ot.TECNICO || '—'}</strong><br>
+        <span>Servicio:</span> ${ot.ID_SERVICIO || '—'}<br>
+        <span>Fecha:</span> ${fmtFecha(ot.FECHA_PROGRAMADA)}
+      </div>
+      <div class="ot-card-footer">
+        <div class="ot-hours">
+          <i class="fas fa-clock"></i> ${ot.HORAS_TRABAJADAS || 0}h trabajadas
+        </div>
+        <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// VER DETALLE OT
+// ============================================================
+async function verOT(idOT) {
+  navegarA('detalle');
+  document.getElementById('page-detalle').innerHTML = `
+    <div class="loader-full" style="position:relative;min-height:300px;background:transparent">
+      <div class="loader-spinner"></div>
+      <p>Cargando OT...</p>
+    </div>`;
+
+  const res = await api('ORDENES_TRABAJO', 'detalle', { id_ot: idOT });
+  if (!res.ok) {
+    document.getElementById('page-detalle').innerHTML = `
+      <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i>${res.mensaje}</div>
+      <button class="btn btn-secondary btn-full" onclick="navegarA('ots')"><i class="fas fa-arrow-left"></i> Volver</button>`;
+    return;
+  }
+
+  const ot = res.datos;
+  CFG.otDetalle = ot;
+  renderDetalleOT(ot);
+}
+
+function renderDetalleOT(ot) {
+  const actividades = ot.ACTIVIDADES || [];
+  const materiales = ot.MATERIALES || [];
+  const evidencias = ot.EVIDENCIAS || [];
+
+  const puedeCerrar = ot.ESTADO !== 'Cerrada' && ot.ESTADO !== 'Cancelado';
+  const puedeEditar = ot.ESTADO !== 'Cerrada';
+
+  document.getElementById('page-detalle').innerHTML = `
+    <div class="detail-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.12);color:white;padding:6px 12px" onclick="navegarA('ots')">
+          <i class="fas fa-arrow-left"></i> Volver
+        </button>
+        ${estadoPill(ot.ESTADO)}
+      </div>
+      <div class="detail-ot-id">${ot.ID_OT}</div>
+      <div class="detail-title">Servicio ${ot.ID_SERVICIO || '—'}</div>
+      <div class="detail-meta">
+        <div class="detail-meta-item">
+          <div class="detail-meta-label">Técnico</div>
+          <div class="detail-meta-value">${ot.TECNICO || '—'}</div>
+        </div>
+        <div class="detail-meta-item">
+          <div class="detail-meta-label">Horas</div>
+          <div class="detail-meta-value">${ot.HORAS_TRABAJADAS || 0}h</div>
+        </div>
+        <div class="detail-meta-item">
+          <div class="detail-meta-label">Fecha</div>
+          <div class="detail-meta-value">${fmtFecha(ot.FECHA_PROGRAMADA)}</div>
+        </div>
+        <div class="detail-meta-item">
+          <div class="detail-meta-label">Firma cliente</div>
+          <div class="detail-meta-value">${ot.FIRMA_CLIENTE ? '✅ Sí' : '— No'}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones rápidas -->
+    ${puedeEditar ? `
+    <div class="chip-row">
+      <button class="chip chip-blue" onclick="sheetAgregarActividad('${ot.ID_OT}')">
+        <i class="fas fa-list-check"></i> Actividad
+      </button>
+      <button class="chip chip-orange" onclick="sheetRegistrarHoras('${ot.ID_OT}')">
+        <i class="fas fa-clock"></i> Horas
+      </button>
+      <button class="chip chip-success" onclick="sheetRegistrarMaterial('${ot.ID_OT}')">
+        <i class="fas fa-boxes-stacked"></i> Material
+      </button>
+      ${puedeCerrar ? `<button class="chip chip-danger" onclick="sheetCambiarEstado('${ot.ID_OT}','${ot.ESTADO}')">
+        <i class="fas fa-exchange-alt"></i> Estado
+      </button>` : ''}
+    </div>` : ''}
+
+    <!-- Actividades -->
+    <div class="card">
+      <div class="card-body" style="padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <strong style="font-size:14px;color:var(--navy)"><i class="fas fa-list-check" style="color:var(--orange);margin-right:6px"></i>Actividades (${actividades.length})</strong>
+        </div>
+        ${actividades.length === 0
+          ? '<p style="font-size:13px;color:var(--text-muted)">Sin actividades registradas.</p>'
+          : actividades.map(a => `
+            <div class="act-item">
+              <div class="act-icon-wrap orange"><i class="fas fa-wrench"></i></div>
+              <div class="act-content">
+                <div class="act-title">${a.DESCRIPCION || a.descripcion || '—'}</div>
+                <div class="act-sub">${a.FECHA || a.fecha || ''}</div>
+              </div>
+            </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Materiales -->
+    <div class="card">
+      <div class="card-body" style="padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <strong style="font-size:14px;color:var(--navy)"><i class="fas fa-boxes-stacked" style="color:var(--blue);margin-right:6px"></i>Materiales (${materiales.length})</strong>
+        </div>
+        ${materiales.length === 0
+          ? '<p style="font-size:13px;color:var(--text-muted)">Sin consumo de materiales.</p>'
+          : materiales.map(m => `
+            <div class="act-item">
+              <div class="act-icon-wrap info"><i class="fas fa-box"></i></div>
+              <div class="act-content">
+                <div class="act-title">${m.MATERIAL || m.material || '—'}</div>
+                <div class="act-sub">Cantidad: ${m.CANTIDAD || m.cantidad || 1}</div>
+              </div>
+            </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Firma cliente -->
+    ${puedeCerrar ? `
+    <div class="card">
+      <div class="card-body" style="padding:14px 16px">
+        <strong style="font-size:14px;color:var(--navy)"><i class="fas fa-signature" style="color:var(--orange);margin-right:6px"></i>Firma del Cliente</strong>
+        <p style="font-size:13px;color:var(--text-muted);margin:8px 0 12px">
+          ${ot.FIRMA_CLIENTE ? 'Firma ya registrada.' : 'El cliente debe firmar antes de cerrar la OT.'}
+        </p>
+        ${ot.FIRMA_CLIENTE
+          ? `<div class="alert alert-success"><i class="fas fa-check-circle"></i>Firma registrada</div>`
+          : `<button class="btn btn-orange btn-full" onclick="sheetFirmaCliente('${ot.ID_OT}')">
+               <i class="fas fa-pen"></i> Tomar Firma del Cliente
+             </button>`}
+      </div>
+    </div>
+    ${puedeCerrar ? `
+    <button class="btn btn-danger btn-full" style="margin-bottom:20px" onclick="confirmarCierreOT('${ot.ID_OT}')">
+      <i class="fas fa-flag-checkered"></i> Cerrar Orden de Trabajo
+    </button>` : ''}` : `
+    <div class="alert alert-success"><i class="fas fa-check-circle"></i>Esta OT fue cerrada correctamente.</div>`}
+  `;
+}
+
+// ============================================================
+// BOTTOM SHEETS — ACCIONES
+// ============================================================
+function openSheet(title, bodyHTML, footerHTML = '') {
+  document.getElementById('sheetTitle').textContent = title;
+  document.getElementById('sheetBody').innerHTML = bodyHTML;
+  const footerEl = document.getElementById('sheetFooter');
+  if (footerHTML) { footerEl.innerHTML = footerHTML; footerEl.style.display = 'flex'; }
+  else { footerEl.style.display = 'none'; }
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.getElementById('bottomSheet').classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('sheetOverlay').classList.remove('open');
+  document.getElementById('bottomSheet').classList.remove('open');
+}
+
+// — Registrar Horas —
+function sheetRegistrarHoras(idOT) {
+  openSheet('Registrar Horas',
+    `<div class="f-group">
+       <label>Horas trabajadas</label>
+       <input id="shHoras" type="number" min="0.5" max="24" step="0.5" placeholder="Ej: 4.5"/>
+     </div>
+     <div class="f-group">
+       <label>Observaciones (opcional)</label>
+       <textarea id="shHorasObs" placeholder="Describe el trabajo realizado..."></textarea>
+     </div>`,
+    `<button class="btn btn-secondary btn-full" onclick="closeSheet()">Cancelar</button>
+     <button class="btn btn-orange btn-full" onclick="guardarHoras('${idOT}')">
+       <i class="fas fa-save"></i> Guardar
+     </button>`);
+}
+
+async function guardarHoras(idOT) {
+  const horas = parseFloat(document.getElementById('shHoras').value);
+  const obs = document.getElementById('shHorasObs').value.trim();
+  if (!horas || horas <= 0) { toast('Ingresa las horas trabajadas', 'error'); return; }
+
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  btn.disabled = true;
+
+  const res = await api('ORDENES_TRABAJO', 'registrarHoras', { id_ot: idOT, horas, observaciones: obs });
+
+  if (res.ok) {
+    toast('Horas registradas correctamente', 'success');
+    closeSheet();
+    cacheClear();
+    verOT(idOT);
+  } else {
+    toast(res.mensaje || 'Error al registrar', 'error');
+    btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
+    btn.disabled = false;
+  }
+}
+
+// — Agregar Actividad —
+function sheetAgregarActividad(idOT) {
+  openSheet('Registrar Actividad',
+    `<div class="f-group">
+       <label>Descripción de la actividad</label>
+       <textarea id="shActDesc" placeholder="Describe detalladamente qué se realizó..." style="min-height:120px"></textarea>
+     </div>`,
+    `<button class="btn btn-secondary btn-full" onclick="closeSheet()">Cancelar</button>
+     <button class="btn btn-orange btn-full" onclick="guardarActividad('${idOT}')">
+       <i class="fas fa-save"></i> Guardar
+     </button>`);
+}
+
+async function guardarActividad(idOT) {
+  const desc = document.getElementById('shActDesc').value.trim();
+  if (!desc) { toast('Ingresa la descripción de la actividad', 'error'); return; }
+
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  btn.disabled = true;
+
+  const res = await api('ORDENES_TRABAJO', 'registrarActividad', { id_ot: idOT, descripcion: desc });
+
+  if (res.ok) {
+    toast('Actividad registrada', 'success');
+    closeSheet();
+    cacheClear();
+    verOT(idOT);
+  } else {
+    toast(res.mensaje || 'Error al registrar', 'error');
+    btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
+    btn.disabled = false;
+  }
+}
+
+// — Registrar Material —
+function sheetRegistrarMaterial(idOT) {
+  openSheet('Registrar Material Consumido',
+    `<div class="f-group">
+       <label>Material / Insumo</label>
+       <input id="shMatNombre" type="text" placeholder="Nombre del material o insumo"/>
+     </div>
+     <div class="f-group">
+       <label>Cantidad</label>
+       <input id="shMatCantidad" type="number" min="1" step="1" placeholder="1"/>
+     </div>
+     <div class="f-group">
+       <label>Observaciones (opcional)</label>
+       <input id="shMatObs" type="text" placeholder="Referencia, código, etc."/>
+     </div>`,
+    `<button class="btn btn-secondary btn-full" onclick="closeSheet()">Cancelar</button>
+     <button class="btn btn-orange btn-full" onclick="guardarMaterial('${idOT}')">
+       <i class="fas fa-save"></i> Guardar
+     </button>`);
+}
+
+async function guardarMaterial(idOT) {
+  const mat = document.getElementById('shMatNombre').value.trim();
+  const cant = parseInt(document.getElementById('shMatCantidad').value) || 1;
+  const obs = document.getElementById('shMatObs').value.trim();
+  if (!mat) { toast('Ingresa el nombre del material', 'error'); return; }
+
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  btn.disabled = true;
+
+  const res = await api('ORDENES_TRABAJO', 'registrarMaterial', { id_ot: idOT, material: mat, cantidad: cant, observaciones: obs });
+
+  if (res.ok) {
+    toast('Material registrado', 'success');
+    closeSheet();
+    cacheClear();
+    verOT(idOT);
+  } else {
+    toast(res.mensaje || 'Error al registrar', 'error');
+    btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
+    btn.disabled = false;
+  }
+}
+
+// — Cambiar Estado —
+function sheetCambiarEstado(idOT, estadoActual) {
+  const estados = ['Pendiente','En Proceso','En Revisión','Cerrada'].filter(e => e !== estadoActual);
+  openSheet('Cambiar Estado de OT',
+    `<p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Estado actual: <strong>${estadoActual}</strong></p>
+     <div class="f-group">
+       <label>Nuevo estado</label>
+       <select id="shNuevoEstado">
+         ${estados.map(e => `<option value="${e}">${e}</option>`).join('')}
+       </select>
+     </div>
+     <div class="f-group">
+       <label>Observaciones</label>
+       <textarea id="shEstadoObs" placeholder="Motivo del cambio..."></textarea>
+     </div>`,
+    `<button class="btn btn-secondary btn-full" onclick="closeSheet()">Cancelar</button>
+     <button class="btn btn-primary btn-full" onclick="guardarEstado('${idOT}')">
+       <i class="fas fa-exchange-alt"></i> Cambiar
+     </button>`);
+}
+
+async function guardarEstado(idOT) {
+  const nuevoEstado = document.getElementById('shNuevoEstado').value;
+  const obs = document.getElementById('shEstadoObs').value.trim();
+
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  btn.disabled = true;
+
+  const res = await api('ORDENES_TRABAJO', 'cambiarEstado', { id_ot: idOT, estado: nuevoEstado, observaciones: obs });
+
+  if (res.ok) {
+    toast('Estado actualizado a: ' + nuevoEstado, 'success');
+    closeSheet();
+    cacheClear();
+    verOT(idOT);
+  } else {
+    toast(res.mensaje || 'Error al cambiar estado', 'error');
+    btn.innerHTML = '<i class="fas fa-exchange-alt"></i> Cambiar';
+    btn.disabled = false;
+  }
+}
+
+// — Firma Cliente —
+let firmaCtx, firmaDrawing = false, firmaLastX, firmaLastY;
+
+function sheetFirmaCliente(idOT) {
+  openSheet('Firma del Cliente',
+    `<p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+       El cliente debe firmar en el recuadro de abajo.
+     </p>
+     <div class="firma-wrap">
+       <canvas id="firmaCanvas" width="400" height="160"></canvas>
+     </div>
+     <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="limpiarFirma()">
+       <i class="fas fa-eraser"></i> Limpiar firma
+     </button>`,
+    `<button class="btn btn-secondary btn-full" onclick="closeSheet()">Cancelar</button>
+     <button class="btn btn-success btn-full" onclick="guardarFirma('${idOT}')">
+       <i class="fas fa-check"></i> Confirmar Firma
+     </button>`);
+
+  // Init canvas
+  setTimeout(() => {
+    const canvas = document.getElementById('firmaCanvas');
+    if (!canvas) return;
+    firmaCtx = canvas.getContext('2d');
+    firmaCtx.strokeStyle = '#0f1f5c';
+    firmaCtx.lineWidth = 2.5;
+    firmaCtx.lineCap = 'round';
+    firmaCtx.lineJoin = 'round';
+
+    // Touch events
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      firmaDrawing = true;
+      const t = e.touches[0];
+      const r = canvas.getBoundingClientRect();
+      firmaLastX = (t.clientX - r.left) * (canvas.width / r.width);
+      firmaLastY = (t.clientY - r.top) * (canvas.height / r.height);
+    }, {passive:false});
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (!firmaDrawing) return;
+      const t = e.touches[0];
+      const r = canvas.getBoundingClientRect();
+      const x = (t.clientX - r.left) * (canvas.width / r.width);
+      const y = (t.clientY - r.top) * (canvas.height / r.height);
+      firmaCtx.beginPath();
+      firmaCtx.moveTo(firmaLastX, firmaLastY);
+      firmaCtx.lineTo(x, y);
+      firmaCtx.stroke();
+      firmaLastX = x; firmaLastY = y;
+    }, {passive:false});
+    canvas.addEventListener('touchend', () => firmaDrawing = false);
+    // Mouse events
+    canvas.addEventListener('mousedown', e => {
+      firmaDrawing = true;
+      const r = canvas.getBoundingClientRect();
+      firmaLastX = (e.clientX - r.left) * (canvas.width / r.width);
+      firmaLastY = (e.clientY - r.top) * (canvas.height / r.height);
+    });
+    canvas.addEventListener('mousemove', e => {
+      if (!firmaDrawing) return;
+      const r = canvas.getBoundingClientRect();
+      const x = (e.clientX - r.left) * (canvas.width / r.width);
+      const y = (e.clientY - r.top) * (canvas.height / r.height);
+      firmaCtx.beginPath();
+      firmaCtx.moveTo(firmaLastX, firmaLastY);
+      firmaCtx.lineTo(x, y);
+      firmaCtx.stroke();
+      firmaLastX = x; firmaLastY = y;
+    });
+    canvas.addEventListener('mouseup', () => firmaDrawing = false);
+  }, 100);
+}
+
+function limpiarFirma() {
+  const canvas = document.getElementById('firmaCanvas');
+  if (canvas && firmaCtx) firmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+async function guardarFirma(idOT) {
+  const canvas = document.getElementById('firmaCanvas');
+  if (!canvas) return;
+  const firmaB64 = canvas.toDataURL('image/png');
+
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  btn.disabled = true;
+
+  const res = await api('ORDENES_TRABAJO', 'registrarFirma', { id_ot: idOT, firma_base64: firmaB64 });
+
+  if (res.ok) {
+    toast('Firma del cliente registrada', 'success');
+    closeSheet();
+    cacheClear();
+    verOT(idOT);
+  } else {
+    toast(res.mensaje || 'Error al guardar firma', 'error');
+    btn.innerHTML = '<i class="fas fa-check"></i> Confirmar Firma';
+    btn.disabled = false;
+  }
+}
+
+// — Cerrar OT —
+function confirmarCierreOT(idOT) {
+  openSheet('⚠️ Cerrar Orden de Trabajo',
+    `<div class="alert alert-warning">
+       <i class="fas fa-exclamation-triangle"></i>
+       Esta acción cerrará la OT definitivamente. Asegúrate de haber registrado todas las actividades y la firma del cliente.
+     </div>
+     <div class="f-group">
+       <label>Observaciones de cierre</label>
+       <textarea id="shCierreObs" placeholder="Resumen del trabajo realizado..." style="min-height:100px"></textarea>
+     </div>`,
+    `<button class="btn btn-secondary btn-full" onclick="closeSheet()">Cancelar</button>
+     <button class="btn btn-danger btn-full" onclick="ejecutarCierreOT('${idOT}')">
+       <i class="fas fa-flag-checkered"></i> Confirmar Cierre
+     </button>`);
+}
+
+async function ejecutarCierreOT(idOT) {
+  const obs = document.getElementById('shCierreObs').value.trim();
+  const btn = event.target;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cerrando...';
+  btn.disabled = true;
+
+  const res = await api('ORDENES_TRABAJO', 'cambiarEstado', { id_ot: idOT, estado: 'Cerrada', observaciones: obs });
+
+  if (res.ok) {
+    toast('OT cerrada exitosamente. Se generó el acta de entrega.', 'success');
+    closeSheet();
+    cacheClear();
+    navegarA('ots');
+    cargarMisOTs();
+  } else {
+    toast(res.mensaje || 'Error al cerrar OT', 'error');
+    btn.innerHTML = '<i class="fas fa-flag-checkered"></i> Confirmar Cierre';
+    btn.disabled = false;
+  }
+}
+
+// ============================================================
+// INFO APP
+// ============================================================
+function mostrarInfoApp() {
+  openSheet('Acerca del Portal',
+    `<div style="text-align:center;padding:12px 0">
+       <div style="width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,var(--orange),#fbbf24);display:flex;align-items:center;justify-content:center;font-size:26px;color:white;margin:0 auto 16px;box-shadow:0 4px 16px rgba(234,88,12,.4)">
+         <i class="fas fa-hard-hat"></i>
+       </div>
+       <h3 style="font-size:18px;font-weight:800;color:var(--navy)">Portal Técnico</h3>
+       <p style="font-size:13px;color:var(--text-muted);margin-top:6px">Grupo WEDM · Operaciones</p>
+       <p style="font-size:12px;color:var(--text-muted);margin-top:16px;line-height:1.7">
+         Versión 1.0.0<br>
+         Conectado al ERP OPERACIONES principal.<br>
+         Los datos se sincronizan en tiempo real con Google Sheets.
+       </p>
+     </div>`);
+}
+
+// ============================================================
+// UTILIDADES
+// ============================================================
+function estadoPill(estado) {
+  const map = {
+    'Pendiente': 'pill-warning',
+    'En Proceso': 'pill-info',
+    'En Revisión': 'pill-orange',
+    'Cerrada': 'pill-success',
+    'Cancelado': 'pill-gray',
+  };
+  return `<span class="pill ${map[estado]||'pill-gray'}">${estado}</span>`;
+}
+
+function fmtFecha(val) {
+  if (!val) return '—';
+  const d = new Date(val);
+  if (isNaN(d)) return val;
+  return d.toLocaleDateString('es-CO', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  const icons = { success:'check-circle', error:'times-circle', warning:'exclamation-triangle', info:'info-circle' };
+  el.innerHTML = `<i class="fas fa-${icons[type]||'info-circle'}"></i> ${msg}`;
+  document.getElementById('toastBox').appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0'; el.style.transform = 'translateY(-8px)'; el.style.transition = 'all .4s';
+    setTimeout(() => el.remove(), 400);
+  }, 3500);
+}
+
+// ============================================================
+// STARTUP
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Intentar sesión guardada
+  const savedToken = localStorage.getItem('pt_token');
+  const savedSesion = localStorage.getItem('pt_sesion');
+
+  if (savedToken && savedSesion) {
+    CFG.token = savedToken;
+    CFG.sesion = JSON.parse(savedSesion);
+    // Verificar token aún válido
+    api('AUTH', 'verificar', { token: savedToken }).then(res => {
+      document.getElementById('loaderFull').style.display = 'none';
+      if (res.ok) {
+        iniciarApp();
+      } else {
+        localStorage.removeItem('pt_token');
+        localStorage.removeItem('pt_sesion');
+        document.getElementById('loginScreen').style.display = 'flex';
+      }
+    }).catch(() => {
+      document.getElementById('loaderFull').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'flex';
+    });
+  } else {
+    document.getElementById('loaderFull').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+  }
+});
+</script>
+</body>
+</html>
