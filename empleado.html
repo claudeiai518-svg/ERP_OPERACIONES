@@ -1021,9 +1021,9 @@ async function verOT(idOT) {
 }
 
 function renderDetalleOT(ot) {
-  const actividades = ot.ACTIVIDADES || [];
-  const materiales = ot.MATERIALES || [];
-  const evidencias = ot.EVIDENCIAS || [];
+  const actividades = ot.ACTIVIDADES_OT || ot.actividades || [];
+  const materiales = ot.CONSUMO_MATERIALES_OT || ot.materiales || [];
+  const evidencias = ot.EVIDENCIAS || ot.evidencias || [];
 
   const puedeCerrar = ot.ESTADO !== 'Cerrada' && ot.ESTADO !== 'Cancelado';
   const puedeEditar = ot.ESTADO !== 'Cerrada';
@@ -1087,8 +1087,8 @@ function renderDetalleOT(ot) {
             <div class="act-item">
               <div class="act-icon-wrap orange"><i class="fas fa-wrench"></i></div>
               <div class="act-content">
-                <div class="act-title">${a.DESCRIPCION || a.descripcion || '—'}</div>
-                <div class="act-sub">${a.FECHA || a.fecha || ''}</div>
+                <div class="act-title">${a.DESCRIPCION || '—'}</div>
+                <div class="act-sub">${a.FECHA ? fmtFecha(a.FECHA) : ''}</div>
               </div>
             </div>`).join('')}
       </div>
@@ -1106,8 +1106,8 @@ function renderDetalleOT(ot) {
             <div class="act-item">
               <div class="act-icon-wrap info"><i class="fas fa-box"></i></div>
               <div class="act-content">
-                <div class="act-title">${m.MATERIAL || m.material || '—'}</div>
-                <div class="act-sub">Cantidad: ${m.CANTIDAD || m.cantidad || 1}</div>
+                <div class="act-title">${m.ITEM || '—'}</div>
+                <div class="act-sub">Cantidad: ${m.CANTIDAD || 1}</div>
               </div>
             </div>`).join('')}
       </div>
@@ -1180,7 +1180,7 @@ async function guardarHoras(idOT) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
   btn.disabled = true;
 
-  const res = await api('ORDENES_TRABAJO', 'registrarHoras', { id_ot: idOT, horas, observaciones: obs });
+  const res = await api('ORDENES_TRABAJO', 'registrarHoras', { idOT: idOT, horas });
 
   if (res.ok) {
     toast('Horas registradas correctamente', 'success');
@@ -1215,7 +1215,7 @@ async function guardarActividad(idOT) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
   btn.disabled = true;
 
-  const res = await api('ORDENES_TRABAJO', 'registrarActividad', { id_ot: idOT, descripcion: desc });
+  const res = await api('ACTIVIDADES', 'crear', { OT: idOT, DESCRIPCION: desc });
 
   if (res.ok) {
     toast('Actividad registrada', 'success');
@@ -1260,7 +1260,7 @@ async function guardarMaterial(idOT) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
   btn.disabled = true;
 
-  const res = await api('ORDENES_TRABAJO', 'registrarMaterial', { id_ot: idOT, material: mat, cantidad: cant, observaciones: obs });
+  const res = await api('CONSUMO', 'registrar', { OT: idOT, ITEM: mat, CANTIDAD: cant });
 
   if (res.ok) {
     toast('Material registrado', 'success');
@@ -1303,7 +1303,7 @@ async function guardarEstado(idOT) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
   btn.disabled = true;
 
-  const res = await api('ORDENES_TRABAJO', 'cambiarEstado', { id_ot: idOT, estado: nuevoEstado, observaciones: obs });
+  const res = await api('ORDENES_TRABAJO', 'cambiarEstado', { idOT: idOT, estado: nuevoEstado, observaciones: obs });
 
   if (res.ok) {
     toast('Estado actualizado a: ' + nuevoEstado, 'success');
@@ -1405,7 +1405,7 @@ async function guardarFirma(idOT) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
   btn.disabled = true;
 
-  const res = await api('ORDENES_TRABAJO', 'registrarFirma', { id_ot: idOT, firma_base64: firmaB64 });
+  const res = await api('ORDENES_TRABAJO', 'actualizar', { ID_OT: idOT, FIRMA_CLIENTE: firmaB64 });
 
   if (res.ok) {
     toast('Firma del cliente registrada', 'success');
@@ -1442,7 +1442,7 @@ async function ejecutarCierreOT(idOT) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cerrando...';
   btn.disabled = true;
 
-  const res = await api('ORDENES_TRABAJO', 'cambiarEstado', { id_ot: idOT, estado: 'Cerrada', observaciones: obs });
+  const res = await api('ORDENES_TRABAJO', 'cambiarEstado', { idOT: idOT, estado: 'Cerrada', observaciones: obs });
 
   if (res.ok) {
     toast('OT cerrada exitosamente. Se generó el acta de entrega.', 'success');
