@@ -976,25 +976,46 @@ function otCardHTML(ot) {
 }
 
 // ============================================================
-// VER DETALLE OT
+// VER DETALLE OT — busca en cache local, no llama a "detalle"
 // ============================================================
 async function verOT(idOT) {
   navegarA('detalle');
-  document.getElementById('page-detalle').innerHTML = `
-    <div class="loader-full" style="position:relative;min-height:300px;background:transparent">
-      <div class="loader-spinner"></div>
-      <p>Cargando OT...</p>
-    </div>`;
 
-  const res = await api('ORDENES_TRABAJO', 'detalle', { id_ot: idOT });
-  if (!res.ok) {
+  // Buscar en las OTs ya cargadas
+  let ot = CFG.misOTs.find(o => o.ID_OT === idOT);
+
+  // Si no está en cache, recargar lista
+  if (!ot) {
     document.getElementById('page-detalle').innerHTML = `
-      <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i>${res.mensaje}</div>
-      <button class="btn btn-secondary btn-full" onclick="navegarA('ots')"><i class="fas fa-arrow-left"></i> Volver</button>`;
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;gap:12px">
+        <div class="loader-spinner"></div>
+        <p style="font-size:13px;color:var(--text-muted)">Cargando OT...</p>
+      </div>`;
+    cacheClear();
+    const res = await api('ORDENES_TRABAJO', 'listar', {});
+    if (!res.ok) {
+      document.getElementById('page-detalle').innerHTML = `
+        <div style="padding:20px">
+          <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i>${res.mensaje}</div>
+          <button class="btn btn-secondary btn-full" onclick="navegarA('ots')"><i class="fas fa-arrow-left"></i> Volver</button>
+        </div>`;
+      return;
+    }
+    const todas = res.datos || [];
+    CFG.misOTs = todas;
+    cacheSet('misOTs', todas);
+    ot = todas.find(o => o.ID_OT === idOT);
+  }
+
+  if (!ot) {
+    document.getElementById('page-detalle').innerHTML = `
+      <div style="padding:20px">
+        <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i>No se encontró la OT ${idOT}</div>
+        <button class="btn btn-secondary btn-full" onclick="navegarA('ots')"><i class="fas fa-arrow-left"></i> Volver</button>
+      </div>`;
     return;
   }
 
-  const ot = res.datos;
   CFG.otDetalle = ot;
   renderDetalleOT(ot);
 }
@@ -1492,29 +1513,18 @@ function toast(msg, type = 'info') {
 // STARTUP
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-  // Intentar sesión guardada
   const savedToken = localStorage.getItem('pt_token');
   const savedSesion = localStorage.getItem('pt_sesion');
 
+  document.getElementById('loaderFull').style.display = 'none';
+
   if (savedToken && savedSesion) {
+    // Restaurar sesión directamente sin verificar con el servidor
+    // (evita cerrar sesión al recargar si el script no responde rápido)
     CFG.token = savedToken;
     CFG.sesion = JSON.parse(savedSesion);
-    // Verificar token aún válido
-    api('AUTH', 'verificar', { token: savedToken }).then(res => {
-      document.getElementById('loaderFull').style.display = 'none';
-      if (res.ok) {
-        iniciarApp();
-      } else {
-        localStorage.removeItem('pt_token');
-        localStorage.removeItem('pt_sesion');
-        document.getElementById('loginScreen').style.display = 'flex';
-      }
-    }).catch(() => {
-      document.getElementById('loaderFull').style.display = 'none';
-      document.getElementById('loginScreen').style.display = 'flex';
-    });
+    iniciarApp();
   } else {
-    document.getElementById('loaderFull').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
   }
 });
