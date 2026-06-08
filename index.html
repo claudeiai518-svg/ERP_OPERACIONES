@@ -2553,6 +2553,9 @@ async function _monitorCargar() {
                 <div style="border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--text-muted);text-align:center">
                   <i class="fas fa-clipboard"></i> Sin OT activa asignada
                 </div>`}
+              <button onclick="abrirChatAdmin('${nombre}')" style="width:100%;margin-top:10px;padding:8px;border-radius:10px;background:var(--bg);border:1.5px solid var(--border);color:var(--navy);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+                <i class="fas fa-comments" style="color:var(--ops-orange)"></i> Abrir Chat
+              </button>
               </div>`;
           }).join('')}
         </div>
@@ -2566,6 +2569,138 @@ function filtrarMonitor(q) {
   document.querySelectorAll('.monitor-card').forEach(el => {
     el.style.display = el.dataset.emp.includes(val) ? '' : 'none';
   });
+}
+
+// ============================================================
+// CHAT ADMIN — modal de chat con un técnico específico
+// ============================================================
+let _adminChatTecnico = null;
+let _adminChatTimer = null;
+let _adminChatUltimo = null;
+
+function abrirChatAdmin(tecnico) {
+  _adminChatTecnico = tecnico;
+  _adminChatUltimo = null;
+
+  // Crear modal overlay
+  const existing = document.getElementById('adminChatModal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'adminChatModal';
+  modal.style.cssText = `position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;background:white;max-width:480px;margin:auto;border-radius:20px 20px 0 0;bottom:0;top:auto;height:85vh;box-shadow:0 -8px 40px rgba(0,0,0,.18)`;
+
+  modal.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0">${tecnico.charAt(0).toUpperCase()}</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:15px;color:var(--navy)">${tecnico}</div>
+        <div style="font-size:11px;color:var(--text-muted)">Chat directo · Portal Técnico</div>
+      </div>
+      <button onclick="cerrarChatAdmin()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;padding:4px"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="adminChatMsgs" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:var(--bg)">
+      <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+    </div>
+    <div style="padding:10px 16px 14px;background:white;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
+      <textarea id="adminChatInput" placeholder="Escribe un mensaje al técnico..." rows="1"
+        style="flex:1;border:1.5px solid var(--border);border-radius:22px;padding:10px 16px;font-size:14px;font-family:inherit;resize:none;outline:none;max-height:90px;overflow-y:auto;line-height:1.4"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMsgAdmin()}"></textarea>
+      <button onclick="enviarMsgAdmin()" style="width:44px;height:44px;border-radius:50%;background:var(--navy);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  `;
+
+  // Overlay oscuro
+  const overlay = document.createElement('div');
+  overlay.id = 'adminChatOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998';
+  overlay.onclick = cerrarChatAdmin;
+  document.body.appendChild(overlay);
+  document.body.appendChild(modal);
+
+  _cargarMsgsAdmin();
+  if (_adminChatTimer) clearInterval(_adminChatTimer);
+  _adminChatTimer = setInterval(_cargarMsgsAdmin, 10000);
+}
+
+function cerrarChatAdmin() {
+  if (_adminChatTimer) { clearInterval(_adminChatTimer); _adminChatTimer = null; }
+  document.getElementById('adminChatModal')?.remove();
+  document.getElementById('adminChatOverlay')?.remove();
+  _adminChatTecnico = null;
+}
+
+async function _cargarMsgsAdmin() {
+  const tecnico = _adminChatTecnico;
+  if (!tecnico) return;
+  const res = await callApi('CHAT', 'listar', { tecnico });
+  if (!res.ok) return;
+  callApi('CHAT', 'leidos', { tecnico, rol: 'ADMIN' });
+  _renderMsgsAdmin(res.datos);
+  if (res.datos.length) _adminChatUltimo = new Date(res.datos[res.datos.length-1].FECHA);
+}
+
+function _renderMsgsAdmin(msgs) {
+  const cont = document.getElementById('adminChatMsgs');
+  if (!cont) return;
+
+  if (msgs.length === 0) {
+    cont.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:30px"><i class="fas fa-comments" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px"></i>Sin mensajes aún.</div>`;
+    return;
+  }
+
+  let html = '';
+  let ultimaFecha = '';
+  msgs.forEach(m => {
+    const fecha = m.FECHA ? new Date(m.FECHA) : null;
+    const fechaStr = fecha ? fecha.toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'short' }) : '';
+    if (fechaStr !== ultimaFecha) {
+      html += `<div style="text-align:center;font-size:11px;color:var(--text-muted);margin:6px 0;font-weight:600">${fechaStr}</div>`;
+      ultimaFecha = fechaStr;
+    }
+    const esAdmin = m.ROL === 'ADMIN';
+    const hora = fecha ? fecha.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' }) : '';
+    html += `<div style="display:flex;flex-direction:column;max-width:78%;${esAdmin?'align-self:flex-end;align-items:flex-end':'align-self:flex-start;align-items:flex-start'}">
+      <div style="padding:10px 14px;border-radius:18px;font-size:13.5px;line-height:1.45;word-break:break-word;${esAdmin?'background:var(--navy);color:white;border-bottom-right-radius:4px':'background:white;color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px'}">${m.MENSAJE.replace(/\n/g,'<br>')}</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:3px;padding:0 4px">${hora} · ${esAdmin ? 'Admin' : m.TECNICO}</div>
+    </div>`;
+  });
+
+  cont.innerHTML = html;
+  cont.scrollTop = cont.scrollHeight;
+}
+
+async function enviarMsgAdmin() {
+  const tecnico = _adminChatTecnico;
+  if (!tecnico) return;
+  const input = document.getElementById('adminChatInput');
+  const txt = (input?.value || '').trim();
+  if (!txt) return;
+  input.value = '';
+  input.style.height = 'auto';
+
+  const cont = document.getElementById('adminChatMsgs');
+  const tmpId = 'admtmp_' + Date.now();
+  const hora = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  cont.innerHTML += `<div style="display:flex;flex-direction:column;max-width:78%;align-self:flex-end;align-items:flex-end" id="${tmpId}">
+    <div style="padding:10px 14px;border-radius:18px;font-size:13.5px;background:var(--navy);color:white;border-bottom-right-radius:4px;opacity:.6">${txt.replace(/\n/g,'<br>')}</div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:3px;padding:0 4px">${hora} · Enviando...</div>
+  </div>`;
+  cont.scrollTop = cont.scrollHeight;
+
+  const res = await callApi('CHAT', 'enviar', { TECNICO: tecnico, REMITENTE: 'Administrador', ROL: 'ADMIN', MENSAJE: txt });
+  const tmp = document.getElementById(tmpId);
+  if (res.ok) {
+    if (tmp) { tmp.querySelector('div').style.opacity = '1'; tmp.querySelectorAll('div')[1].textContent = hora + ' · Admin'; }
+    _adminChatUltimo = new Date();
+  } else {
+    tmp?.remove();
+    toast('Error al enviar: ' + (res.mensaje || ''), 'error');
+    input.value = txt;
+  }
 }
 
 

@@ -422,6 +422,21 @@ input, select, textarea { font-family: inherit; }
 .empty h4 { font-size: 15px; font-weight: 700; color: var(--text-mid); margin-bottom: 6px; }
 .empty p { font-size: 13px; line-height: 1.6; }
 
+/* CHAT BUBBLES */
+.burbuja-wrap { display:flex; flex-direction:column; max-width:78%; }
+.burbuja-wrap.yo { align-self:flex-end; align-items:flex-end; }
+.burbuja-wrap.ellos { align-self:flex-start; align-items:flex-start; }
+.burbuja { padding:10px 14px; border-radius:18px; font-size:13.5px; line-height:1.45; word-break:break-word; }
+.burbuja.yo { background:var(--orange); color:white; border-bottom-right-radius:4px; }
+.burbuja.ellos { background:white; color:var(--text); border:1px solid var(--border); border-bottom-left-radius:4px; }
+.burbuja-meta { font-size:10px; color:var(--text-muted); margin-top:3px; padding:0 4px; }
+.chat-fecha-sep { text-align:center; font-size:11px; color:var(--text-muted); margin:8px 0; font-weight:600; }
+/* REGISTRO CARD */
+.reg-foto { width:100%; border-radius:12px; object-fit:cover; max-height:220px; display:block; }
+.reg-item { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+.reg-item:last-child { border-bottom:none; }
+.reg-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+
 /* SKELETON */
 .skeleton {
   background: linear-gradient(90deg, var(--bg) 25%, var(--bg2) 50%, var(--bg) 75%);
@@ -631,6 +646,46 @@ canvas#firmaCanvas { display: block; width: 100%; height: 160px; }
     </div>
   </div>
 
+  <!-- PÁGINA: MIS REGISTROS -->
+  <div class="page" id="page-registros">
+    <div class="section-title" style="margin-top:4px">
+      <i class="fas fa-images"></i> Mis Registros
+    </div>
+    <div id="registrosContent">
+      <div class="skeleton" style="height:200px;margin-bottom:12px;border-radius:16px"></div>
+      <div class="skeleton" style="height:120px;margin-bottom:12px;border-radius:16px"></div>
+    </div>
+  </div>
+
+  <!-- PÁGINA: CHAT CON ADMIN -->
+  <div class="page" id="page-chat" style="display:flex;flex-direction:column;height:calc(100vh - var(--bottom-bar));padding:0">
+    <div style="padding:16px 16px 8px;background:white;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;font-size:16px">
+          <i class="fas fa-headset"></i>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy)">Administración</div>
+          <div style="font-size:11px;color:var(--success)" id="chatEstado">● En línea</div>
+        </div>
+      </div>
+    </div>
+    <div id="chatMensajes" style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px;background:var(--bg)">
+      <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px">
+        <i class="fas fa-spinner fa-spin"></i> Cargando mensajes...
+      </div>
+    </div>
+    <div style="padding:10px 16px 12px;background:white;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
+      <textarea id="chatInput" placeholder="Escribe un mensaje..." rows="1"
+        style="flex:1;border:1.5px solid var(--border);border-radius:22px;padding:10px 16px;font-size:14px;font-family:inherit;resize:none;outline:none;max-height:100px;overflow-y:auto;line-height:1.4"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMensajeChat()}"></textarea>
+      <button onclick="enviarMensajeChat()" style="width:44px;height:44px;border-radius:50%;background:var(--orange);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+
 </div>
 
 <!-- BOTTOM NAV -->
@@ -643,6 +698,15 @@ canvas#firmaCanvas { display: block; width: 100%; height: 160px; }
     <i class="fas fa-bolt"></i>
     <span>Mis OTs</span>
     <span class="nav-tab-badge" id="otsBadge" style="display:none">0</span>
+  </button>
+  <button class="nav-tab" id="tab-registros" onclick="navegarA('registros')" style="position:relative">
+    <i class="fas fa-images"></i>
+    <span>Registros</span>
+  </button>
+  <button class="nav-tab" id="tab-chat" onclick="navegarA('chat')" style="position:relative">
+    <i class="fas fa-comments"></i>
+    <span>Chat</span>
+    <span class="nav-tab-badge" id="chatBadge" style="display:none">!</span>
   </button>
   <button class="nav-tab" id="tab-perfil" onclick="navegarA('perfil')">
     <i class="fas fa-user"></i>
@@ -813,6 +877,9 @@ function iniciarApp() {
   navegarA('inicio');
   cargarMisOTs();
   setTimeout(cargarMisCompetencias, 1500);
+  // Revisar mensajes no leídos cada 30 segundos
+  _chatCheckBadge();
+  setInterval(_chatCheckBadge, 30000);
 }
 
 // ============================================================
@@ -830,9 +897,21 @@ function navegarA(page) {
   CFG.currentPage = page;
 
   const fab = document.getElementById('fabBtn');
-  fab.className = 'fab hidden'; // por defecto oculto
+  fab.className = 'fab hidden';
 
   window.scrollTo(0, 0);
+
+  // Detener polling de chat si salimos
+  if (page !== 'chat' && _chatTimer) { clearInterval(_chatTimer); _chatTimer = null; }
+
+  if (page === 'registros') {
+    cargarRegistros();
+  } else if (page === 'chat') {
+    cargarChat();
+    // Polling cada 12 segundos mientras estamos en chat
+    if (_chatTimer) clearInterval(_chatTimer);
+    _chatTimer = setInterval(_chatPolling, 12000);
+  }
 }
 
 function refreshCurrent() {
@@ -1806,8 +1885,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loaderFull').style.display = 'none';
 
   if (savedToken && savedSesion) {
-    // Restaurar sesión directamente sin verificar con el servidor
-    // (evita cerrar sesión al recargar si el script no responde rápido)
     CFG.token = savedToken;
     CFG.sesion = JSON.parse(savedSesion);
     iniciarApp();
@@ -1815,6 +1892,218 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loginScreen').style.display = 'flex';
   }
 });
+
+// ============================================================
+// PÁGINA: MIS REGISTROS
+// ============================================================
+async function cargarRegistros() {
+  const cont = document.getElementById('registrosContent');
+  if (!cont) return;
+  cont.innerHTML = `<div class="skeleton" style="height:200px;margin-bottom:12px;border-radius:16px"></div><div class="skeleton" style="height:120px;margin-bottom:12px;border-radius:16px"></div>`;
+
+  const [resOTs, resGPS, resEviAll] = await Promise.all([
+    api('ORDENES_TRABAJO', 'listar', {}),
+    api('GPS', 'listar', {}),
+    api('EVIDENCIAS', 'registrar', { _solo_listar: true }).catch(() => ({ ok: false })),
+  ]);
+
+  const miNombre = (CFG.sesion.empleado || CFG.sesion.username || '').toLowerCase();
+  const todasOTs = resOTs.ok ? resOTs.datos : [];
+  const misOTs = todasOTs.filter(ot => (ot.TECNICO || '').toLowerCase().includes(miNombre.split(' ')[0]));
+
+  // GPS de este técnico
+  const gpsRegistros = resGPS.ok ? resGPS.datos : [];
+  const miGPS = gpsRegistros
+    .filter(g => (g.EMPLEADO || '').toLowerCase().includes(miNombre.split(' ')[0]))
+    .sort((a, b) => new Date(b.FECHA) - new Date(a.FECHA));
+
+  if (misOTs.length === 0 && miGPS.length === 0) {
+    cont.innerHTML = `<div class="card"><div class="card-body" style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-folder-open" style="font-size:36px;opacity:.3;display:block;margin-bottom:12px"></i>Sin registros todavía.<br>Cuando registres actividades o tomes fotos aparecerán aquí.</div></div>`;
+    return;
+  }
+
+  let html = '';
+
+  // ── Últimas fotos de presencia ──
+  const fotosOT = [];
+  for (const ot of misOTs.slice(0, 5)) {
+    const resEv = await api('EVIDENCIAS', 'listar', { idOT: ot.ID_OT });
+    if (resEv.ok) {
+      resEv.datos.filter(e => e.TIENE_FOTO || e.TIPO === 'FOTO_PRESENCIA').forEach(e => fotosOT.push({ ...e, _otId: ot.ID_OT, _otServicio: ot.SERVICIO }));
+    }
+  }
+
+  if (fotosOT.length > 0) {
+    html += `<div class="card" style="margin-bottom:14px">
+      <div class="card-body" style="padding:14px 16px">
+        <strong style="font-size:14px;color:var(--navy);display:block;margin-bottom:12px"><i class="fas fa-camera" style="color:var(--orange);margin-right:6px"></i>Fotos de Presencia (${fotosOT.length})</strong>
+        <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px">
+          ${fotosOT.map(e => `
+            <div style="flex-shrink:0;width:140px">
+              <div style="width:140px;height:105px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:4px">
+                <i class="fas fa-image" style="font-size:28px;color:var(--border)"></i>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted)">${e._otId}</div>
+              <div style="font-size:10px;color:var(--text-muted)">${e.FECHA ? new Date(e.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : '—'}</div>
+              ${e.GPS_LINK ? `<a href="${e.GPS_LINK}" target="_blank" style="font-size:10px;color:var(--orange);font-weight:600"><i class="fas fa-map-marker-alt"></i> Ver mapa</a>` : ''}
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── GPS ──
+  if (miGPS.length > 0) {
+    html += `<div class="card" style="margin-bottom:14px">
+      <div class="card-body" style="padding:14px 16px">
+        <strong style="font-size:14px;color:var(--navy);display:block;margin-bottom:10px"><i class="fas fa-map-marker-alt" style="color:var(--success);margin-right:6px"></i>Mis Ubicaciones GPS (${miGPS.length})</strong>
+        ${miGPS.slice(0,8).map(g => `
+          <div class="reg-item">
+            <div class="reg-icon" style="background:var(--success-bg);color:var(--success)"><i class="fas fa-location-dot"></i></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600">${g.TIPO === 'FOTO_PRESENCIA' ? '📷 Foto presencia' : '📍 GPS manual'} · OT ${g.OT || '—'}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${g.FECHA ? new Date(g.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : '—'} ${g.OBSERVACIONES ? '· ' + g.OBSERVACIONES.substring(0,40) : ''}</div>
+              ${g.LINK_MAPA ? `<a href="${g.LINK_MAPA}" target="_blank" style="font-size:11px;color:var(--orange);font-weight:600"><i class="fas fa-external-link-alt"></i> Ver en Maps</a>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── Actividades y materiales por OT ──
+  for (const ot of misOTs.slice(0, 5)) {
+    const acts = ot.ACTIVIDADES_OT || [];
+    const mats = ot.CONSUMO_MATERIALES_OT || [];
+    if (acts.length === 0 && mats.length === 0) continue;
+    html += `<div class="card" style="margin-bottom:14px">
+      <div class="card-body" style="padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <strong style="font-size:13px;color:var(--navy)">${ot.ID_OT}</strong>
+          <span style="font-size:11px;color:var(--text-muted)">${ot.SERVICIO || ''}</span>
+        </div>
+        ${acts.map(a => `<div class="reg-item">
+          <div class="reg-icon" style="background:var(--orange-bg);color:var(--orange)"><i class="fas fa-wrench"></i></div>
+          <div><div style="font-size:13px;font-weight:600">${a.DESCRIPCION || '—'}</div><div style="font-size:11px;color:var(--text-muted)">${a.FECHA ? new Date(a.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : ''}</div></div>
+        </div>`).join('')}
+        ${mats.map(m => `<div class="reg-item">
+          <div class="reg-icon" style="background:var(--info-bg);color:var(--info)"><i class="fas fa-box"></i></div>
+          <div><div style="font-size:13px;font-weight:600">${m.ITEM || '—'}</div><div style="font-size:11px;color:var(--text-muted)">Cantidad: ${m.CANTIDAD || 1}</div></div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  cont.innerHTML = html || `<div class="card"><div class="card-body" style="text-align:center;padding:30px;color:var(--text-muted)">Sin registros detallados aún.</div></div>`;
+}
+
+// ============================================================
+// PÁGINA: CHAT CON ADMIN
+// ============================================================
+let _chatTimer = null;
+let _chatUltimoMsg = null;
+
+async function cargarChat() {
+  const tecnico = CFG.sesion.empleado || CFG.sesion.username;
+  const res = await api('CHAT', 'listar', { tecnico });
+  if (!res.ok) {
+    document.getElementById('chatMensajes').innerHTML = `<div style="text-align:center;color:var(--danger);font-size:13px;padding:20px"><i class="fas fa-exclamation-circle"></i> ${res.mensaje}</div>`;
+    return;
+  }
+  // Marcar como leídos
+  api('CHAT', 'leidos', { tecnico, rol: 'TECNICO' });
+  document.getElementById('chatBadge').style.display = 'none';
+  _renderMensajes(res.datos);
+  if (res.datos.length) _chatUltimoMsg = new Date(res.datos[res.datos.length - 1].FECHA);
+}
+
+function _renderMensajes(msgs) {
+  const cont = document.getElementById('chatMensajes');
+  if (!cont) return;
+
+  if (msgs.length === 0) {
+    cont.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:30px">
+      <i class="fas fa-comments" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px"></i>
+      Aún no hay mensajes.<br>Escríbele al administrador si tienes alguna duda.
+    </div>`;
+    return;
+  }
+
+  let html = '';
+  let ultimaFecha = '';
+  msgs.forEach(m => {
+    const fecha = m.FECHA ? new Date(m.FECHA) : null;
+    const fechaStr = fecha ? fecha.toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'short' }) : '';
+    if (fechaStr !== ultimaFecha) {
+      html += `<div class="chat-fecha-sep">${fechaStr}</div>`;
+      ultimaFecha = fechaStr;
+    }
+    const esMio = m.ROL === 'TECNICO';
+    const hora = fecha ? fecha.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' }) : '';
+    html += `<div class="burbuja-wrap ${esMio ? 'yo' : 'ellos'}">
+      <div class="burbuja ${esMio ? 'yo' : 'ellos'}">${m.MENSAJE.replace(/\n/g,'<br>')}</div>
+      <div class="burbuja-meta">${hora}${esMio ? ' · Tú' : ' · Admin'}</div>
+    </div>`;
+  });
+
+  cont.innerHTML = html;
+  cont.scrollTop = cont.scrollHeight;
+}
+
+async function enviarMensajeChat() {
+  const input = document.getElementById('chatInput');
+  const txt = (input?.value || '').trim();
+  if (!txt) return;
+  input.value = '';
+  input.style.height = 'auto';
+
+  const tecnico = CFG.sesion.empleado || CFG.sesion.username;
+  const remitente = tecnico;
+
+  // Mostrar burbuja optimista
+  const cont = document.getElementById('chatMensajes');
+  const tmpId = 'tmp_' + Date.now();
+  const hora = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  cont.innerHTML += `<div class="burbuja-wrap yo" id="${tmpId}">
+    <div class="burbuja yo" style="opacity:.6">${txt.replace(/\n/g,'<br>')}</div>
+    <div class="burbuja-meta">${hora} · Enviando...</div>
+  </div>`;
+  cont.scrollTop = cont.scrollHeight;
+
+  const res = await apiPost('CHAT', 'enviar', { TECNICO: tecnico, REMITENTE: remitente, ROL: 'TECNICO', MENSAJE: txt });
+
+  const tmp = document.getElementById(tmpId);
+  if (res.ok) {
+    if (tmp) tmp.querySelector('.burbuja-meta').textContent = hora + ' · Tú';
+    if (tmp) tmp.querySelector('.burbuja').style.opacity = '1';
+    _chatUltimoMsg = new Date();
+  } else {
+    if (tmp) tmp.remove();
+    toast('Error al enviar: ' + res.mensaje, 'error');
+    input.value = txt;
+  }
+}
+
+async function _chatPolling() {
+  if (CFG.currentPage !== 'chat') return;
+  const tecnico = CFG.sesion.empleado || CFG.sesion.username;
+  const res = await api('CHAT', 'listar', { tecnico, desde: _chatUltimoMsg?.toISOString() });
+  if (res.ok && res.datos.length > 0) {
+    await cargarChat();
+  }
+}
+
+function _chatCheckBadge() {
+  // Polling rápido para badge cuando no estamos en chat
+  if (CFG.currentPage === 'chat') return;
+  const tecnico = CFG.sesion.empleado || CFG.sesion.username;
+  if (!tecnico) return;
+  api('CHAT', 'listar', { tecnico }).then(res => {
+    if (!res.ok) return;
+    const sinLeer = res.datos.filter(m => m.ROL === 'ADMIN' && !m.LEIDO_TEC).length;
+    const badge = document.getElementById('chatBadge');
+    if (badge) badge.style.display = sinLeer > 0 ? 'flex' : 'none';
+  });
+}
 </script>
 </body>
 </html>
