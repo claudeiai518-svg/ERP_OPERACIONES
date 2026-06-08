@@ -1125,6 +1125,61 @@ async function verOT(idOT) {
   renderDetalleOT(ot);
 }
 
+function _imgEvidencia(e) {
+  const src = e.ARCHIVO || e.URL_FOTO || e.FOTO || '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'flex-shrink:0;width:150px';
+  const imgBox = document.createElement('div');
+  imgBox.style.cssText = 'width:150px;height:112px;border-radius:10px;overflow:hidden;background:var(--bg);margin-bottom:5px;border:1px solid var(--border);cursor:pointer';
+  if (src) {
+    const img = document.createElement('img');
+    img.src = src;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+    img.loading = 'lazy';
+    img.onclick = () => window.open(src, '_blank');
+    img.onerror = function() {
+      this.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)"><i class="fas fa-image" style="font-size:24px"></i></div>';
+    };
+    imgBox.appendChild(img);
+  } else {
+    imgBox.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)"><i class="fas fa-image" style="font-size:24px"></i></div>';
+  }
+  wrap.appendChild(imgBox);
+  const tipo = document.createElement('div');
+  tipo.style.cssText = 'font-size:11px;font-weight:600;color:var(--text-mid)';
+  tipo.textContent = e.TIPO || 'FOTO_PRESENCIA';
+  wrap.appendChild(tipo);
+  const fecha = document.createElement('div');
+  fecha.style.cssText = 'font-size:11px;color:var(--text-muted)';
+  fecha.textContent = e.FECHA ? fmtFecha(e.FECHA) : '';
+  wrap.appendChild(fecha);
+  const obs = document.createElement('div');
+  obs.style.cssText = 'font-size:11px;color:var(--text-muted)';
+  obs.textContent = (e.OBSERVACIONES || '').substring(0, 40);
+  wrap.appendChild(obs);
+  if (e.GPS_LINK) {
+    const link = document.createElement('a');
+    link.href = e.GPS_LINK; link.target = '_blank';
+    link.style.cssText = 'font-size:11px;color:var(--orange);font-weight:600';
+    link.innerHTML = '<i class="fas fa-map-marker-alt"></i> Ver mapa';
+    wrap.appendChild(link);
+  }
+  return wrap.outerHTML;
+}
+
+function _imgFirma(src) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'border:2px solid var(--success);border-radius:10px;overflow:hidden;background:white;margin-bottom:10px';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'width:100%;max-height:160px;object-fit:contain;display:block;padding:8px';
+  img.onerror = function() {
+    this.parentElement.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Firma registrada</div>';
+  };
+  wrap.appendChild(img);
+  return wrap.outerHTML;
+}
+
 function renderDetalleOT(ot) {
   const actividades = ot.ACTIVIDADES_OT || ot.actividades || [];
   const materiales = ot.CONSUMO_MATERIALES_OT || ot.materiales || [];
@@ -1235,20 +1290,7 @@ function renderDetalleOT(ot) {
         </div>
         ${evidencias.length === 0
           ? '<p style="font-size:13px;color:var(--text-muted)">Sin evidencias registradas.</p>'
-          : `<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px">
-              ${evidencias.map(e => `
-                <div style="flex-shrink:0;width:150px">
-                  <div style="width:150px;height:112px;border-radius:10px;overflow:hidden;background:var(--bg);margin-bottom:5px;border:1px solid var(--border)">
-                    ${(e.ARCHIVO || e.URL_FOTO || e.FOTO)
-                      ? `<img src="${e.ARCHIVO || e.URL_FOTO || e.FOTO}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)\\'><i class=\\"fas fa-image\\" style=\\"font-size:24px\\"></i></div>'" loading="lazy"/>`
-                      : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)"><i class="fas fa-image" style="font-size:24px"></i></div>`}
-                  </div>
-                  <div style="font-size:11px;font-weight:600;color:var(--text-mid)">${e.TIPO || 'FOTO_PRESENCIA'}</div>
-                  <div style="font-size:11px;color:var(--text-muted)">${e.FECHA ? fmtFecha(e.FECHA) : ''}</div>
-                  <div style="font-size:11px;color:var(--text-muted)">${(e.OBSERVACIONES || '').substring(0, 40)}</div>
-                  ${e.GPS_LINK ? `<a href="${e.GPS_LINK}" target="_blank" style="font-size:11px;color:var(--orange);font-weight:600"><i class="fas fa-map-marker-alt"></i> Ver mapa</a>` : ''}
-                </div>`).join('')}
-            </div>`}
+          : `<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px" id="evGrid_${ot.ID_OT}"></div>`}
       </div>
     </div>
 
@@ -1260,11 +1302,9 @@ function renderDetalleOT(ot) {
         <p style="font-size:13px;color:var(--text-muted);margin:8px 0 12px">
           ${ot.FIRMA_CLIENTE ? 'Firma registrada correctamente.' : 'El cliente debe firmar antes de cerrar la OT.'}
         </p>
+        <div id="firmaImgBox_${ot.ID_OT}"></div>
         ${ot.FIRMA_CLIENTE
-          ? `<div style="border:2px solid var(--success);border-radius:10px;overflow:hidden;background:white;margin-bottom:10px;max-width:100%">
-               <img src="${ot.FIRMA_CLIENTE}" style="width:100%;max-height:160px;object-fit:contain;display:block;padding:8px" onerror="this.parentElement.innerHTML='<div class=\\'alert alert-success\\'><i class=\\"fas fa-check-circle\\"></i> Firma registrada (imagen no disponible)</div>'"/>
-             </div>
-             <div class="alert alert-success" style="margin-bottom:0"><i class="fas fa-check-circle"></i>Firma del cliente registrada</div>`
+          ? `<div class="alert alert-success" style="margin-bottom:0"><i class="fas fa-check-circle"></i>Firma del cliente registrada</div>`
           : `<button class="btn btn-orange btn-full" onclick="sheetFirmaCliente('${ot.ID_OT}')">
                <i class="fas fa-pen"></i> Tomar Firma del Cliente
              </button>`}
@@ -1276,6 +1316,16 @@ function renderDetalleOT(ot) {
     </button>` : ''}` : `
     <div class="alert alert-success"><i class="fas fa-check-circle"></i>Esta OT fue cerrada correctamente.</div>`}
   `;
+
+  // Insertar imágenes con DOM (evita problemas de escaping en template literals)
+  const evGrid = document.getElementById('evGrid_' + ot.ID_OT);
+  if (evGrid && evidencias.length > 0) {
+    evidencias.forEach(e => evGrid.insertAdjacentHTML('beforeend', _imgEvidencia(e)));
+  }
+  const firmaBox = document.getElementById('firmaImgBox_' + ot.ID_OT);
+  if (firmaBox && ot.FIRMA_CLIENTE) {
+    firmaBox.insertAdjacentHTML('beforeend', _imgFirma(ot.FIRMA_CLIENTE));
+  }
 }
 
 // ============================================================
@@ -1940,17 +1990,15 @@ async function cargarRegistros() {
   if (!cont) return;
   cont.innerHTML = `<div class="skeleton" style="height:200px;margin-bottom:12px;border-radius:16px"></div><div class="skeleton" style="height:120px;margin-bottom:12px;border-radius:16px"></div>`;
 
-  const [resOTs, resGPS, resEviAll] = await Promise.all([
+  const [resOTs, resGPS] = await Promise.all([
     api('ORDENES_TRABAJO', 'listar', {}),
     api('GPS', 'listar', {}),
-    api('EVIDENCIAS', 'registrar', { _solo_listar: true }).catch(() => ({ ok: false })),
   ]);
 
   const miNombre = (CFG.sesion.empleado || CFG.sesion.username || '').toLowerCase();
   const todasOTs = resOTs.ok ? resOTs.datos : [];
   const misOTs = todasOTs.filter(ot => (ot.TECNICO || '').toLowerCase().includes(miNombre.split(' ')[0]));
 
-  // GPS de este técnico
   const gpsRegistros = resGPS.ok ? resGPS.datos : [];
   const miGPS = gpsRegistros
     .filter(g => (g.EMPLEADO || '').toLowerCase().includes(miNombre.split(' ')[0]))
@@ -1961,54 +2009,57 @@ async function cargarRegistros() {
     return;
   }
 
-  let html = '';
+  cont.innerHTML = '';
 
-  // ── Últimas fotos de presencia ──
+  // ── Fotos de presencia ──
   const fotosOT = [];
   for (const ot of misOTs.slice(0, 5)) {
     const resEv = await api('EVIDENCIAS', 'listar', { idOT: ot.ID_OT });
-    if (resEv.ok) {
-      resEv.datos.filter(e => e.TIENE_FOTO || e.TIPO === 'FOTO_PRESENCIA').forEach(e => fotosOT.push({ ...e, _otId: ot.ID_OT, _otServicio: ot.SERVICIO }));
+    if (resEv.ok && resEv.datos) {
+      resEv.datos.forEach(e => fotosOT.push({ ...e, _otId: ot.ID_OT }));
     }
   }
 
   if (fotosOT.length > 0) {
-    html += `<div class="card" style="margin-bottom:14px">
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '14px';
+    card.innerHTML = `
       <div class="card-body" style="padding:14px 16px">
-        <strong style="font-size:14px;color:var(--navy);display:block;margin-bottom:12px"><i class="fas fa-camera" style="color:var(--orange);margin-right:6px"></i>Fotos de Presencia (${fotosOT.length})</strong>
-        <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px">
-          ${fotosOT.map(e => `
-            <div style="flex-shrink:0;width:140px">
-              <div style="width:140px;height:105px;border-radius:10px;background:var(--bg);overflow:hidden;margin-bottom:4px;border:1px solid var(--border)">
-                ${e.ARCHIVO || e.URL_FOTO || e.FOTO
-                  ? `<img src="${e.ARCHIVO || e.URL_FOTO || e.FOTO}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" onerror="this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';this.outerHTML='<i class=\\'fas fa-image\\' style=\\'font-size:28px;color:var(--border)\\'></i>'">`
-                  : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="fas fa-image" style="font-size:28px;color:var(--border)"></i></div>`}
-              </div>
-              <div style="font-size:11px;color:var(--text-muted)">${e._otId}</div>
-              <div style="font-size:10px;color:var(--text-muted)">${e.FECHA ? new Date(e.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : '—'}</div>
-              ${e.GPS_LINK ? `<a href="${e.GPS_LINK}" target="_blank" style="font-size:10px;color:var(--orange);font-weight:600"><i class="fas fa-map-marker-alt"></i> Ver mapa</a>` : ''}
-            </div>`).join('')}
-        </div>
-      </div>
-    </div>`;
-  }
-
-  // ── GPS ──
-  if (miGPS.length > 0) {
-    html += `<div class="card" style="margin-bottom:14px">
-      <div class="card-body" style="padding:14px 16px">
-        <strong style="font-size:14px;color:var(--navy);display:block;margin-bottom:10px"><i class="fas fa-map-marker-alt" style="color:var(--success);margin-right:6px"></i>Mis Ubicaciones GPS (${miGPS.length})</strong>
-        ${miGPS.slice(0,8).map(g => `
-          <div class="reg-item">
-            <div class="reg-icon" style="background:var(--success-bg);color:var(--success)"><i class="fas fa-location-dot"></i></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600">${g.TIPO === 'FOTO_PRESENCIA' ? '📷 Foto presencia' : '📍 GPS manual'} · OT ${g.OT || '—'}</div>
-              <div style="font-size:11px;color:var(--text-muted)">${g.FECHA ? new Date(g.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : '—'} ${g.OBSERVACIONES ? '· ' + g.OBSERVACIONES.substring(0,40) : ''}</div>
-              ${g.LINK_MAPA ? `<a href="${g.LINK_MAPA}" target="_blank" style="font-size:11px;color:var(--orange);font-weight:600"><i class="fas fa-external-link-alt"></i> Ver en Maps</a>` : ''}
-            </div>
-          </div>`).join('')}
-      </div>
-    </div>`;
+        <strong style="font-size:14px;color:var(--navy);display:block;margin-bottom:12px">
+          <i class="fas fa-camera" style="color:var(--orange);margin-right:6px"></i>Fotos de Presencia (${fotosOT.length})
+        </strong>
+        <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px" id="regFotosGrid"></div>
+      </div>`;
+    cont.appendChild(card);
+    const grid = card.querySelector('#regFotosGrid');
+    fotosOT.forEach(e => {
+      const src = e.ARCHIVO || e.URL_FOTO || e.FOTO || '';
+      const item = document.createElement('div');
+      item.style.cssText = 'flex-shrink:0;width:140px';
+      const box = document.createElement('div');
+      box.style.cssText = 'width:140px;height:105px;border-radius:10px;background:var(--bg);overflow:hidden;margin-bottom:4px;border:1px solid var(--border)';
+      if (src) {
+        const img = document.createElement('img');
+        img.src = src;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+        img.loading = 'lazy';
+        img.onclick = () => window.open(src, '_blank');
+        img.style.cursor = 'pointer';
+        img.onerror = function() { this.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%"><i class="fas fa-image" style="font-size:28px;color:var(--border)"></i></div>'; };
+        box.appendChild(img);
+      } else {
+        box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%"><i class="fas fa-image" style="font-size:28px;color:var(--border)"></i></div>';
+      }
+      item.appendChild(box);
+      item.insertAdjacentHTML('beforeend', `
+        <div style="font-size:11px;font-weight:600;color:var(--text-mid)">${e.TIPO || 'FOTO_PRESENCIA'}</div>
+        <div style="font-size:10px;color:var(--text-muted)">OT: ${e._otId}</div>
+        <div style="font-size:10px;color:var(--text-muted)">${e.FECHA ? new Date(e.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : '—'}</div>
+        ${e.GPS_LINK ? `<a href="${e.GPS_LINK}" target="_blank" style="font-size:10px;color:var(--orange);font-weight:600"><i class="fas fa-map-marker-alt"></i> Ver mapa</a>` : ''}
+      `);
+      grid.appendChild(item);
+    });
   }
 
   // ── Actividades y materiales por OT ──
@@ -2016,25 +2067,72 @@ async function cargarRegistros() {
     const acts = ot.ACTIVIDADES_OT || [];
     const mats = ot.CONSUMO_MATERIALES_OT || [];
     if (acts.length === 0 && mats.length === 0) continue;
-    html += `<div class="card" style="margin-bottom:14px">
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '14px';
+    let inner = `
       <div class="card-body" style="padding:14px 16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <strong style="font-size:13px;color:var(--navy)">${ot.ID_OT}</strong>
           <span style="font-size:11px;color:var(--text-muted)">${ot.SERVICIO || ''}</span>
-        </div>
-        ${acts.map(a => `<div class="reg-item">
+        </div>`;
+    if (acts.length > 0) {
+      inner += `<div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em"><i class="fas fa-wrench" style="margin-right:4px"></i>Actividades (${acts.length})</div>`;
+      acts.forEach(a => {
+        inner += `<div class="reg-item">
           <div class="reg-icon" style="background:var(--orange-bg);color:var(--orange)"><i class="fas fa-wrench"></i></div>
-          <div><div style="font-size:13px;font-weight:600">${a.DESCRIPCION || '—'}</div><div style="font-size:11px;color:var(--text-muted)">${a.FECHA ? new Date(a.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : ''}</div></div>
-        </div>`).join('')}
-        ${mats.map(m => `<div class="reg-item">
+          <div>
+            <div style="font-size:13px;font-weight:600">${a.DESCRIPCION || '—'}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${a.FECHA ? new Date(a.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : ''}</div>
+          </div>
+        </div>`;
+      });
+    }
+    if (mats.length > 0) {
+      inner += `<div style="font-size:12px;font-weight:700;color:var(--info);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.04em"><i class="fas fa-box" style="margin-right:4px"></i>Materiales (${mats.length})</div>`;
+      mats.forEach(m => {
+        inner += `<div class="reg-item">
           <div class="reg-icon" style="background:var(--info-bg);color:var(--info)"><i class="fas fa-box"></i></div>
-          <div><div style="font-size:13px;font-weight:600">${m.ITEM || '—'}</div><div style="font-size:11px;color:var(--text-muted)">Cantidad: ${m.CANTIDAD || 1}</div></div>
-        </div>`).join('')}
-      </div>
-    </div>`;
+          <div>
+            <div style="font-size:13px;font-weight:600">${m.ITEM || '—'}</div>
+            <div style="font-size:11px;color:var(--text-muted)">Cantidad: ${m.CANTIDAD || 1}</div>
+          </div>
+        </div>`;
+      });
+    }
+    inner += '</div>';
+    card.innerHTML = inner;
+    cont.appendChild(card);
   }
 
-  cont.innerHTML = html || `<div class="card"><div class="card-body" style="text-align:center;padding:30px;color:var(--text-muted)">Sin registros detallados aún.</div></div>`;
+  // ── GPS ──
+  if (miGPS.length > 0) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '14px';
+    let inner = `
+      <div class="card-body" style="padding:14px 16px">
+        <strong style="font-size:14px;color:var(--navy);display:block;margin-bottom:10px">
+          <i class="fas fa-map-marker-alt" style="color:var(--success);margin-right:6px"></i>Mis Ubicaciones GPS (${miGPS.length})
+        </strong>`;
+    miGPS.slice(0, 8).forEach(g => {
+      inner += `<div class="reg-item">
+        <div class="reg-icon" style="background:var(--success-bg);color:var(--success)"><i class="fas fa-location-dot"></i></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${g.TIPO === 'FOTO_PRESENCIA' ? '📷 Foto presencia' : '📍 GPS manual'} · OT ${g.OT || '—'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${g.FECHA ? new Date(g.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : '—'} ${g.OBSERVACIONES ? '· ' + g.OBSERVACIONES.substring(0,40) : ''}</div>
+          ${g.LINK_MAPA ? `<a href="${g.LINK_MAPA}" target="_blank" style="font-size:11px;color:var(--orange);font-weight:600"><i class="fas fa-external-link-alt"></i> Ver en Maps</a>` : ''}
+        </div>
+      </div>`;
+    });
+    inner += '</div>';
+    card.innerHTML = inner;
+    cont.appendChild(card);
+  }
+
+  if (!cont.hasChildNodes()) {
+    cont.innerHTML = `<div class="card"><div class="card-body" style="text-align:center;padding:30px;color:var(--text-muted)">Sin registros detallados aún.</div></div>`;
+  }
 }
 
 // ============================================================
