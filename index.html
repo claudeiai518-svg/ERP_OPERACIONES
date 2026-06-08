@@ -2382,8 +2382,7 @@ async function monitorRefresh() {
 }
 
 async function _monitorCargar() {
-  const [resEmps, resOTs, resGPS] = await Promise.all([
-    callApi('EMPLEADOS', 'listar', {}),
+  const [resOTs, resGPS] = await Promise.all([
     callApi('ORDENES_TRABAJO', 'listar', {}),
     callApi('GPS', 'listar', {}),
   ]);
@@ -2395,67 +2394,86 @@ async function _monitorCargar() {
   const cont = document.getElementById('monitorContent');
   if (!cont) return;
 
-  const empleados = resEmps.ok ? resEmps.datos : [];
   const ots = resOTs.ok ? resOTs.datos : [];
   const gpsRegistros = resGPS.ok ? resGPS.datos : [];
 
-  // Agrupar por empleado: última ubicación GPS y OT activa
-  const hoy = ahora.toDateString();
+  // ── Construir lista de técnicos desde GPS + OT (sin depender de hoja EMPLEADOS) ──
+  // Recopilar todos los nombres únicos que aparecen en GPS o en OTs
+  const nombresSet = new Set();
+  gpsRegistros.forEach(g => { if (g.EMPLEADO) nombresSet.add(g.EMPLEADO); });
+  ots.forEach(ot => { if (ot.TECNICO) nombresSet.add(ot.TECNICO); });
+
+  const tecnicos = [...nombresSet].sort();
+
+  // Último GPS por técnico
   const ultimoGPS = {};
   gpsRegistros.forEach(g => {
     const emp = g.EMPLEADO;
     if (!emp) return;
-    const existente = ultimoGPS[emp];
-    if (!existente || new Date(g.FECHA) > new Date(existente.FECHA)) {
+    if (!ultimoGPS[emp] || new Date(g.FECHA) > new Date(ultimoGPS[emp].FECHA)) {
       ultimoGPS[emp] = g;
     }
   });
 
+  // OT activa más reciente por técnico
   const otActiva = {};
   ots.forEach(ot => {
-    if (!['Cerrada','Cancelada'].includes(ot.ESTADO)) {
-      const t = ot.TECNICO;
-      if (!otActiva[t] || new Date(ot.FECHA_PROGRAMADA) > new Date(otActiva[t].FECHA_PROGRAMADA)) {
-        otActiva[t] = ot;
-      }
+    if (['Cerrada','Cancelada'].includes(ot.ESTADO)) return;
+    const t = ot.TECNICO;
+    if (!t) return;
+    if (!otActiva[t] || new Date(ot.FECHA_PROGRAMADA) > new Date(otActiva[t].FECHA_PROGRAMADA)) {
+      otActiva[t] = ot;
     }
   });
 
-  // Calcular "visto hace" en minutos
-  function vistohace(fechaStr) {
+  // ── Helpers ──
+  const hoy = ahora.toDateString();
+
+  function minsDiff(fechaStr) {
     if (!fechaStr) return null;
-    const mins = Math.floor((ahora - new Date(fechaStr)) / 60000);
+    return Math.floor((ahora - new Date(fechaStr)) / 60000);
+  }
+  function vistohace(mins) {
+    if (mins === null) return null;
     if (mins < 1) return 'ahora mismo';
     if (mins < 60) return `hace ${mins} min`;
-    const hrs = Math.floor(mins / 60);
-    return `hace ${hrs}h ${mins % 60}min`;
+    const h = Math.floor(mins / 60);
+    return `hace ${h}h ${mins % 60}min`;
   }
-
   function estadoColor(mins) {
     if (mins === null) return '#94a3b8';
     if (mins <= 30) return 'var(--success)';
-    if (mins <= 120) return 'var(--warning)';
+    if (mins <= 180) return 'var(--warning)';
     return '#ef4444';
   }
-
   function otEstadoPill(estado) {
     const mapa = { 'En Proceso':'pill-warning', 'Pendiente':'pill-navy', 'Completada':'pill-success', 'En Espera':'pill-info' };
     return `<span class="pill ${mapa[estado]||'pill-navy'}">${estado}</span>`;
   }
 
-  // Stats rápidos
+  // ── Stats ──
   const conGPSHoy = Object.values(ultimoGPS).filter(g => new Date(g.FECHA).toDateString() === hoy).length;
-  const sinActividad = empleados.filter(e => {
-    const g = ultimoGPS[e.NOMBRE];
+  const enOT = Object.keys(otActiva).length;
+  const sinActividad = tecnicos.filter(n => {
+    const g = ultimoGPS[n];
     if (!g) return true;
-    return (ahora - new Date(g.FECHA)) > 2 * 60 * 60 * 1000;
+    return (ahora - new Date(g.FECHA)) > 3 * 60 * 60 * 1000;
   }).length;
+
+  if (tecnicos.length === 0) {
+    cont.innerHTML = `<div class="empty-state" style="padding:40px">
+      <i class="fas fa-satellite-dish" style="font-size:40px;color:var(--border)"></i>
+      <h4>Sin datos de técnicos aún</h4>
+      <p>Los técnicos aparecerán aquí automáticamente en cuanto tomen una foto o registren su GPS desde el Portal Técnico.</p>
+    </div>`;
+    return;
+  }
 
   cont.innerHTML = `
     <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px">
       <div class="stat-card" style="padding:14px 16px">
         <div class="stat-icon navy" style="width:38px;height:38px;font-size:15px"><i class="fas fa-users"></i></div>
-        <div class="stat-info"><div class="stat-value" style="font-size:22px">${empleados.length}</div><div class="stat-label">Técnicos totales</div></div>
+        <div class="stat-info"><div class="stat-value" style="font-size:22px">${tecnicos.length}</div><div class="stat-label">Técnicos activos</div></div>
       </div>
       <div class="stat-card" style="padding:14px 16px">
         <div class="stat-icon success" style="width:38px;height:38px;font-size:15px"><i class="fas fa-map-marker-alt"></i></div>
@@ -2463,11 +2481,11 @@ async function _monitorCargar() {
       </div>
       <div class="stat-card" style="padding:14px 16px">
         <div class="stat-icon orange" style="width:38px;height:38px;font-size:15px"><i class="fas fa-tools"></i></div>
-        <div class="stat-info"><div class="stat-value" style="font-size:22px">${Object.keys(otActiva).length}</div><div class="stat-label">En OT activa</div></div>
+        <div class="stat-info"><div class="stat-value" style="font-size:22px">${enOT}</div><div class="stat-label">En OT activa</div></div>
       </div>
       <div class="stat-card" style="padding:14px 16px">
         <div class="stat-icon" style="width:38px;height:38px;font-size:15px;background:rgba(239,68,68,.1);color:#ef4444"><i class="fas fa-user-clock"></i></div>
-        <div class="stat-info"><div class="stat-value" style="font-size:22px">${sinActividad}</div><div class="stat-label">Sin actividad (+2h)</div></div>
+        <div class="stat-info"><div class="stat-value" style="font-size:22px">${sinActividad}</div><div class="stat-label">Sin señal (+3h)</div></div>
       </div>
     </div>
 
@@ -2478,64 +2496,65 @@ async function _monitorCargar() {
       </div>
       <div class="card-body" style="padding:0">
         <div id="monitorCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:16px">
-          ${empleados.length === 0
-            ? `<div class="empty-state"><i class="fas fa-users-slash"></i><h4>Sin empleados registrados</h4></div>`
-            : empleados.map(emp => {
-                const gps = ultimoGPS[emp.NOMBRE];
-                const ot = otActiva[emp.NOMBRE];
-                const mins = gps ? Math.floor((ahora - new Date(gps.FECHA)) / 60000) : null;
-                const color = estadoColor(mins);
-                const visto = vistohace(gps?.FECHA);
-                const activo = mins !== null && mins <= 120;
+          ${tecnicos.map(nombre => {
+              const gps = ultimoGPS[nombre];
+              const ot = otActiva[nombre];
+              const mins = minsDiff(gps?.FECHA);
+              const color = estadoColor(mins);
+              const visto = vistohace(mins);
+              const activo = mins !== null && mins <= 180;
+              const tipoIcono = gps?.TIPO === 'FOTO_PRESENCIA' ? '📷 Foto presencia' : gps?.TIPO === 'GPS_MANUAL' ? '📍 GPS manual' : gps?.TIPO || '—';
 
-                return `<div class="monitor-card" data-emp="${(emp.NOMBRE||'').toLowerCase()}" style="background:white;border:1.5px solid ${activo ? color : 'var(--border)'};border-radius:14px;padding:16px;position:relative;overflow:hidden">
-                  <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${color}"></div>
-                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-                    <div style="width:44px;height:44px;border-radius:50%;background:${color};color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0">
-                      ${(emp.NOMBRE||'?').charAt(0).toUpperCase()}
-                    </div>
-                    <div style="flex:1;min-width:0">
-                      <div style="font-weight:700;font-size:14px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${emp.NOMBRE||'—'}</div>
-                      <div style="font-size:11px;color:var(--text-muted)">${emp.CARGO||'Sin cargo'}</div>
-                    </div>
-                    <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0" title="${activo?'Activo':'Sin actividad reciente'}"></div>
+              return `<div class="monitor-card" data-emp="${nombre.toLowerCase()}" style="background:white;border:1.5px solid ${activo ? color : 'var(--border)'};border-radius:14px;padding:16px;position:relative;overflow:hidden">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${color}"></div>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                  <div style="width:44px;height:44px;border-radius:50%;background:${color};color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0">
+                    ${nombre.charAt(0).toUpperCase()}
                   </div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:700;font-size:14px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nombre}</div>
+                    <div style="font-size:11px;color:${color};font-weight:600">${activo ? '● En línea' : mins === null ? '○ Sin registro' : '○ Sin señal reciente'}</div>
+                  </div>
+                  <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0"></div>
+                </div>
 
-                  ${gps ? `
-                  <div style="background:var(--bg);border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:12px">
-                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-                      <i class="fas fa-clock" style="color:${color};width:12px"></i>
-                      <span style="color:var(--text-muted)">Última señal:</span>
-                      <strong style="color:${color}">${visto}</strong>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-                      <i class="fas fa-tag" style="color:var(--ops-orange);width:12px"></i>
-                      <span style="color:var(--text-muted)">Tipo:</span>
-                      <span>${gps.TIPO === 'FOTO_PRESENCIA' ? '📷 Foto presencia' : gps.TIPO === 'GPS_MANUAL' ? '📍 GPS manual' : gps.TIPO||'—'}</span>
-                    </div>
-                    ${gps.LINK_MAPA ? `
-                    <a href="${gps.LINK_MAPA}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ops-orange);font-weight:600;text-decoration:none;margin-top:2px">
-                      <i class="fas fa-map-marker-alt"></i> Ver en Google Maps
-                    </a>` : `<span style="color:var(--text-muted);font-size:11px"><i class="fas fa-map-marker-alt"></i> Sin coordenadas</span>`}
-                  </div>` : `
-                  <div style="background:var(--bg);border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:12px;color:var(--text-muted);text-align:center">
-                    <i class="fas fa-wifi-slash"></i> Sin registro GPS hoy
-                  </div>`}
+                ${gps ? `
+                <div style="background:var(--bg);border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:12px">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <i class="fas fa-clock" style="color:${color};width:12px"></i>
+                    <span style="color:var(--text-muted)">Última señal:</span>
+                    <strong style="color:${color}">${visto}</strong>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:${gps.LINK_MAPA?'6':'0'}px">
+                    <i class="fas fa-tag" style="color:var(--ops-orange);width:12px"></i>
+                    <span style="color:var(--text-muted)">Tipo:</span>
+                    <span>${tipoIcono}</span>
+                  </div>
+                  ${gps.OBSERVACIONES ? `<div style="color:var(--text-muted);font-size:11px;font-style:italic;margin-bottom:4px">"${gps.OBSERVACIONES.substring(0,50)}${gps.OBSERVACIONES.length>50?'...':''}"</div>` : ''}
+                  ${gps.LINK_MAPA
+                    ? `<a href="${gps.LINK_MAPA}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ops-orange);font-weight:600;text-decoration:none">
+                        <i class="fas fa-map-marker-alt"></i> Ver en Google Maps
+                      </a>`
+                    : `<span style="color:var(--text-muted);font-size:11px"><i class="fas fa-map-marker-alt"></i> Sin coordenadas GPS</span>`}
+                </div>` : `
+                <div style="background:var(--bg);border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:12px;color:var(--text-muted);text-align:center">
+                  <i class="fas fa-wifi" style="opacity:.4"></i> Sin registro GPS todavía
+                </div>`}
 
-                  ${ot ? `
-                  <div style="border:1px solid rgba(234,88,12,.2);border-radius:8px;padding:9px 11px;font-size:12px">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                      <span style="font-weight:700;color:var(--navy)">${ot.ID_OT}</span>
-                      ${otEstadoPill(ot.ESTADO)}
-                    </div>
-                    <div style="color:var(--text-muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${ot.SERVICIO||''}">${ot.SERVICIO||'Sin descripción'}</div>
-                    ${ot.OBSERVACIONES ? `<div style="color:var(--text-muted);font-size:11px;margin-top:3px;font-style:italic">"${ot.OBSERVACIONES.substring(0,60)}${ot.OBSERVACIONES.length>60?'...':''}"</div>` : ''}
-                  </div>` : `
-                  <div style="border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--text-muted);text-align:center">
-                    <i class="fas fa-clipboard-check"></i> Sin OT activa asignada
-                  </div>`}
-                </div>`;
-              }).join('')}
+                ${ot ? `
+                <div style="border:1px solid rgba(234,88,12,.2);border-radius:8px;padding:9px 11px;font-size:12px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-weight:700;color:var(--navy);font-size:11px">${ot.ID_OT}</span>
+                    ${otEstadoPill(ot.ESTADO)}
+                  </div>
+                  <div style="color:var(--text-muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${ot.SERVICIO||''}">${ot.SERVICIO||'Sin descripción'}</div>
+                  ${ot.OBSERVACIONES ? `<div style="color:var(--text-muted);font-size:11px;margin-top:3px;font-style:italic">"${ot.OBSERVACIONES.substring(0,55)}${ot.OBSERVACIONES.length>55?'...':''}"</div>` : ''}
+                </div>` : `
+                <div style="border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--text-muted);text-align:center">
+                  <i class="fas fa-clipboard"></i> Sin OT activa asignada
+                </div>`}
+              </div>`;
+          }).join('')}
         </div>
       </div>
     </div>
