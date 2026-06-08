@@ -539,6 +539,18 @@ select.filter-sel:focus { border-color: var(--ops-orange); outline: none; }
         </div>
       </div>
       <div class="nav-section">
+        <div class="nav-section-label">Recurso Humano</div>
+        <div class="nav-item" data-view="empleados" onclick="navigate('empleados')">
+          <i class="fas fa-id-badge"></i> Empleados
+        </div>
+        <div class="nav-item" data-view="competencias" onclick="navigate('competencias')">
+          <i class="fas fa-medal"></i> Competencias
+        </div>
+        <div class="nav-item" data-view="gps" onclick="navigate('gps')">
+          <i class="fas fa-map-marked-alt"></i> Registro GPS
+        </div>
+      </div>
+      <div class="nav-section">
         <div class="nav-section-label">Sistema</div>
         <div class="nav-item" data-view="sistema" onclick="navigate('sistema')">
           <i class="fas fa-cogs"></i> Administración
@@ -756,6 +768,8 @@ const VIEW_TITLES = {
   ordenes: 'Órdenes de Trabajo', visitas: 'Visitas Técnicas',
   programacion: 'Programación de Personal', cuadrillas: 'Cuadrillas',
   actas: 'Actas de Entrega', sistema: 'Administración del Sistema',
+  empleados: 'Gestión de Empleados', competencias: 'Catálogo de Competencias',
+  gps: 'Registro GPS',
 };
 
 function navigate(view) {
@@ -764,7 +778,7 @@ function navigate(view) {
   const active = document.querySelector(`[data-view="${view}"]`);
   if (active) active.classList.add('active');
   document.getElementById('topbarTitle').textContent = VIEW_TITLES[view] || view;
-  const views = { dashboard, servicios, ordenes, visitas, programacion, cuadrillas, actas, sistema };
+  const views = { dashboard, servicios, ordenes, visitas, programacion, cuadrillas, actas, sistema, empleados, competencias, gps };
   if (views[view]) views[view]();
   else mainContent(`<div class="empty-state"><i class="fas fa-wrench"></i><h4>Próximamente</h4><p>Esta sección está en desarrollo.</p></div>`);
 }
@@ -1863,8 +1877,466 @@ async function btnVerEstructura() {
 }
 
 // ============================================================
-// INIT
+// VISTA: EMPLEADOS
 // ============================================================
+let _empData = [];
+
+async function empleados() {
+  mainContent(`<div class="card"><div class="card-header"><h3>Cargando empleados...</h3></div><div class="card-body">${skeletonTable(['ID','Nombre','Cargo','Estado','Competencias','Acciones'])}</div></div>`);
+  const res = await callApi('EMPLEADOS', 'listar', {});
+  _empData = res.ok ? res.datos : [];
+
+  mainContent(`
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-id-badge" style="color:var(--ops-orange);margin-right:8px"></i>Empleados</h3>
+      <button class="btn btn-orange" onclick="formNuevoEmpleado()"><i class="fas fa-plus"></i> Nuevo Empleado</button>
+    </div>
+    <div class="card-body" style="padding-top:14px">
+      <div class="toolbar">
+        <div class="search-box"><i class="fas fa-search"></i>
+          <input type="text" placeholder="Buscar por nombre, cargo..." oninput="filtrarTabla(this,'tblEmpleados')"/>
+        </div>
+        <select class="filter-sel" onchange="filtrarEstadoEmp(this.value)">
+          <option value="">Todos los estados</option>
+          <option>Activo</option><option>Inactivo</option><option>Vacaciones</option><option>Licencia</option>
+        </select>
+        <select class="filter-sel" id="filtroPorCompetencia" onchange="filtrarEmpPorComp(this.value)">
+          <option value="">Filtrar por competencia</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table id="tblEmpleados">
+          <thead><tr><th>ID</th><th>Nombre</th><th>Cargo</th><th>Estado</th><th>Competencias</th><th>Teléfono</th><th>Acciones</th></tr></thead>
+          <tbody>
+            ${_empData.length === 0
+              ? `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-users"></i><h4>Sin empleados</h4><p>Agrega el primer empleado.</p></div></td></tr>`
+              : _empData.map(e => `<tr>
+                <td class="td-mono">${e.ID_EMPLEADO}</td>
+                <td style="font-weight:600">${e.NOMBRE}</td>
+                <td>${e.CARGO || '—'}</td>
+                <td>${estadoPill(e.ESTADO)}</td>
+                <td>${renderCompetenciasEmp(e.COMPETENCIAS)}</td>
+                <td style="font-size:12px">${e.TELEFONO || '—'}</td>
+                <td><div class="td-actions">
+                  <button class="btn btn-sm btn-secondary" title="Gestionar competencias" onclick="modalCompetenciasEmp('${e.ID_EMPLEADO}','${(e.NOMBRE||'').replace(/'/g,"\\'")}','${(e.COMPETENCIAS||'').replace(/'/g,"\\'")}')"><i class="fas fa-medal"></i></button>
+                  <button class="btn btn-sm btn-secondary" title="Editar" onclick="formEditarEmpleado(${JSON.stringify(e).replace(/"/g,'&quot;')})"><i class="fas fa-edit"></i></button>
+                  <button class="btn btn-sm btn-warning" title="Cambiar estado" onclick="modalEstadoEmp('${e.ID_EMPLEADO}','${e.ESTADO}')"><i class="fas fa-exchange-alt"></i></button>
+                </div></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`);
+  // Cargar competencias en el filtro
+  cargarFiltroCompetencias();
+}
+
+function renderCompetenciasEmp(comps) {
+  if (!comps || String(comps).trim() === '') return '<span style="color:var(--text-muted);font-size:12px">Sin asignar</span>';
+  const lista = String(comps).split(',').map(c => c.trim()).filter(Boolean);
+  if (lista.length === 0) return '<span style="color:var(--text-muted);font-size:12px">Sin asignar</span>';
+  const visible = lista.slice(0, 2);
+  const extra = lista.length - 2;
+  return visible.map(c => `<span class="pill pill-navy" style="margin:1px;font-size:10px">${c}</span>`).join('') +
+    (extra > 0 ? `<span class="pill pill-gray" style="margin:1px;font-size:10px">+${extra}</span>` : '');
+}
+
+async function cargarFiltroCompetencias() {
+  const res = await callApi('COMPETENCIAS', 'listar', {});
+  if (!res.ok) return;
+  const sel = document.getElementById('filtroPorCompetencia');
+  if (!sel) return;
+  res.datos.forEach(c => {
+    const op = document.createElement('option');
+    op.value = c.NOMBRE; op.textContent = c.NOMBRE;
+    sel.appendChild(op);
+  });
+}
+
+function filtrarEstadoEmp(estado) {
+  document.querySelectorAll('#tblEmpleados tbody tr').forEach(tr => {
+    if (!estado) { tr.style.display = ''; return; }
+    const celdaEstado = tr.querySelectorAll('td')[3];
+    tr.style.display = celdaEstado && celdaEstado.textContent.includes(estado) ? '' : 'none';
+  });
+}
+
+function filtrarEmpPorComp(comp) {
+  document.querySelectorAll('#tblEmpleados tbody tr').forEach(tr => {
+    if (!comp) { tr.style.display = ''; return; }
+    const celdaComp = tr.querySelectorAll('td')[4];
+    tr.style.display = celdaComp && celdaComp.textContent.toLowerCase().includes(comp.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function formNuevoEmpleado() {
+  openModal('Nuevo Empleado', `
+    <div class="form-grid">
+      <div class="f-group"><label>Nombre Completo *</label><input id="empNombre" placeholder="Nombre del empleado"/></div>
+      <div class="f-group"><label>Cargo *</label><input id="empCargo" placeholder="Ej: Electricista, Técnico HVAC"/></div>
+      <div class="f-group"><label>Teléfono</label><input id="empTel" type="tel" placeholder="300 000 0000"/></div>
+      <div class="f-group"><label>Email</label><input id="empEmail" type="email" placeholder="correo@empresa.com"/></div>
+      <div class="f-group"><label>Fecha de Ingreso</label><input id="empFechaIng" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+      <div class="f-group"><label>Estado</label>
+        <select id="empEstado">
+          <option>Activo</option><option>Inactivo</option><option>Vacaciones</option><option>Licencia</option>
+        </select>
+      </div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: '<i class="fas fa-save"></i> Guardar', cls: 'btn-orange', action: 'guardarNuevoEmpleado()' }
+    ]);
+}
+
+async function guardarNuevoEmpleado() {
+  const datos = {
+    NOMBRE: v('empNombre'), CARGO: v('empCargo'), TELEFONO: v('empTel'),
+    EMAIL: v('empEmail'), FECHA_INGRESO: v('empFechaIng'), ESTADO: v('empEstado')
+  };
+  if (!datos.NOMBRE || !datos.CARGO) { toast('Nombre y cargo son requeridos.', 'warning'); return; }
+  const res = await callApi('EMPLEADOS', 'crear', datos);
+  if (res.ok) { toast(`Empleado ${res.datos.id} creado.`, 'success'); closeModal(); empleados(); }
+  else toast(res.mensaje, 'error');
+}
+
+function formEditarEmpleado(emp) {
+  openModal('Editar Empleado', `
+    <div class="form-grid">
+      <div class="f-group"><label>Nombre Completo *</label><input id="empEditNombre" value="${emp.NOMBRE || ''}"/></div>
+      <div class="f-group"><label>Cargo *</label><input id="empEditCargo" value="${emp.CARGO || ''}"/></div>
+      <div class="f-group"><label>Teléfono</label><input id="empEditTel" value="${emp.TELEFONO || ''}"/></div>
+      <div class="f-group"><label>Email</label><input id="empEditEmail" value="${emp.EMAIL || ''}"/></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Guardar', cls: 'btn-primary', action: `confirmarEditEmp('${emp.ID_EMPLEADO}')` }
+    ]);
+}
+
+async function confirmarEditEmp(id) {
+  const datos = { ID_EMPLEADO: id, NOMBRE: v('empEditNombre'), CARGO: v('empEditCargo'), TELEFONO: v('empEditTel'), EMAIL: v('empEditEmail') };
+  const res = await callApi('EMPLEADOS', 'actualizar', datos);
+  if (res.ok) { toast('Empleado actualizado.', 'success'); closeModal(); empleados(); }
+  else toast(res.mensaje, 'error');
+}
+
+function modalEstadoEmp(id, estadoActual) {
+  openModal('Cambiar Estado del Empleado', `
+    <p style="margin-bottom:12px">Empleado: <strong>${id}</strong> — Actual: ${estadoPill(estadoActual)}</p>
+    <div class="f-group"><label>Nuevo Estado</label>
+      <select id="empNuevoEstado">
+        ${['Activo','Inactivo','Vacaciones','Licencia'].map(e => `<option ${e===estadoActual?'selected':''}>${e}</option>`).join('')}
+      </select>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Cambiar', cls: 'btn-primary', action: `confirmarEstadoEmp('${id}')` }
+    ]);
+}
+
+async function confirmarEstadoEmp(id) {
+  const res = await callApi('EMPLEADOS', 'cambiarEstado', { idEmpleado: id, estado: v('empNuevoEstado') });
+  if (res.ok) { toast(res.mensaje, 'success'); closeModal(); empleados(); }
+  else toast(res.mensaje, 'error');
+}
+
+async function modalCompetenciasEmp(idEmp, nombre, compsCSV) {
+  const resComp = await callApi('COMPETENCIAS', 'listar', {});
+  const catalogo = resComp.ok ? resComp.datos : [];
+  const actuales = compsCSV ? compsCSV.split(',').map(c => c.trim()).filter(Boolean) : [];
+
+  openModal(`Competencias: ${nombre}`,
+    `<div style="margin-bottom:16px">
+      <div style="font-size:12.5px;font-weight:700;color:var(--text-mid);margin-bottom:8px">Competencias actuales</div>
+      <div id="tagsActuales" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px;padding:8px;background:var(--bg);border-radius:8px;border:1.5px solid var(--border)">
+        ${actuales.length === 0
+          ? '<span style="font-size:12px;color:var(--text-muted)">Sin competencias asignadas</span>'
+          : actuales.map(c => `
+            <span class="pill pill-navy" style="cursor:pointer" onclick="quitarCompEmp('${idEmp}','${c}',this)" title="Click para quitar">
+              ${c} <i class="fas fa-times" style="margin-left:4px;font-size:9px"></i>
+            </span>`).join('')}
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:4px"><i class="fas fa-info-circle"></i> Haz click en una competencia para quitarla</p>
+    </div>
+    <div style="font-size:12.5px;font-weight:700;color:var(--text-mid);margin-bottom:8px">Agregar del catálogo</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <select id="selCompCat" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px">
+        <option value="">Seleccionar del catálogo...</option>
+        ${catalogo.map(c => `<option value="${c.NOMBRE}">[${c.CATEGORIA}] ${c.NOMBRE}</option>`).join('')}
+      </select>
+      <button class="btn btn-orange" onclick="agregarCompEmpCat('${idEmp}')"><i class="fas fa-plus"></i></button>
+    </div>
+    <div style="font-size:12.5px;font-weight:700;color:var(--text-mid);margin-bottom:6px">O ingresar una nueva</div>
+    <div style="display:flex;gap:8px">
+      <input id="nuevaCompInput" placeholder="Ej: Instalación de postes" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px"/>
+      <button class="btn btn-primary" onclick="agregarCompEmpManual('${idEmp}')"><i class="fas fa-plus"></i></button>
+    </div>`,
+    [{ label: 'Cerrar', cls: 'btn-secondary', action: 'closeModal()' }], true);
+}
+
+async function agregarCompEmpCat(idEmp) {
+  const comp = v('selCompCat');
+  if (!comp) { toast('Selecciona una competencia del catálogo.', 'warning'); return; }
+  await _agregarComp(idEmp, comp);
+}
+
+async function agregarCompEmpManual(idEmp) {
+  const comp = v('nuevaCompInput');
+  if (!comp) { toast('Ingresa el nombre de la competencia.', 'warning'); return; }
+  await _agregarComp(idEmp, comp);
+}
+
+async function _agregarComp(idEmp, comp) {
+  const res = await callApi('EMPLEADOS', 'agregarCompetencia', { idEmpleado: idEmp, competencia: comp });
+  if (res.ok) {
+    toast(`Competencia "${comp}" agregada.`, 'success');
+    // Refrescar los tags en el modal
+    const tags = document.getElementById('tagsActuales');
+    if (tags) {
+      const actuales = res.datos.competencias || [];
+      tags.innerHTML = actuales.map(c => `
+        <span class="pill pill-navy" style="cursor:pointer" onclick="quitarCompEmp('${idEmp}','${c}',this)" title="Click para quitar">
+          ${c} <i class="fas fa-times" style="margin-left:4px;font-size:9px"></i>
+        </span>`).join('');
+    }
+    if (document.getElementById('nuevaCompInput')) document.getElementById('nuevaCompInput').value = '';
+    Cache.invalidate('EMPLEADOS');
+  } else toast(res.mensaje, 'error');
+}
+
+async function quitarCompEmp(idEmp, comp, el) {
+  if (!confirm(`¿Quitar la competencia "${comp}"?`)) return;
+  const res = await callApi('EMPLEADOS', 'quitarCompetencia', { idEmpleado: idEmp, competencia: comp });
+  if (res.ok) {
+    toast(`Competencia "${comp}" quitada.`, 'success');
+    el.remove();
+    Cache.invalidate('EMPLEADOS');
+  } else toast(res.mensaje, 'error');
+}
+
+// ============================================================
+// VISTA: CATÁLOGO DE COMPETENCIAS
+// ============================================================
+async function competencias() {
+  mainContent(`<div class="card"><div class="card-header"><h3>Cargando...</h3></div><div class="card-body">${skeletonTable(['ID','Nombre','Categoría','Descripción'])}</div></div>`);
+  const res = await callApi('COMPETENCIAS', 'listar', {});
+  const lista = res.ok ? res.datos : [];
+
+  // Agrupar por categoría
+  const grupos = {};
+  lista.forEach(c => {
+    const cat = c.CATEGORIA || 'General';
+    if (!grupos[cat]) grupos[cat] = [];
+    grupos[cat].push(c);
+  });
+
+  const catColors = ['pill-navy','pill-info','pill-success','pill-warning','pill-orange','pill-danger'];
+  const catList = Object.keys(grupos);
+
+  mainContent(`
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-medal" style="color:var(--ops-orange);margin-right:8px"></i>Catálogo de Competencias</h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm btn-secondary" onclick="modalBuscarPorCompetencia()"><i class="fas fa-search"></i> Buscar empleados</button>
+        <button class="btn btn-orange" onclick="formNuevaCompetencia()"><i class="fas fa-plus"></i> Nueva</button>
+      </div>
+    </div>
+    <div class="card-body" style="padding-top:14px">
+      <div class="toolbar">
+        <div class="search-box"><i class="fas fa-search"></i>
+          <input type="text" placeholder="Buscar competencia..." oninput="filtrarTabla(this,'tblComp')"/>
+        </div>
+      </div>
+      ${catList.length === 0
+        ? '<div class="empty-state"><i class="fas fa-medal"></i><h4>Sin competencias</h4><p>Crea la primera competencia del catálogo.</p></div>'
+        : catList.map((cat, ci) => `
+          <div style="margin-bottom:20px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <span class="pill ${catColors[ci % catColors.length]}">${cat}</span>
+              <span style="font-size:12px;color:var(--text-muted)">${grupos[cat].length} competencia(s)</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+              ${grupos[cat].map(c => `
+                <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:13.5px;font-weight:700;color:var(--navy)">${c.NOMBRE}</div>
+                  ${c.DESCRIPCION ? `<div style="font-size:12px;color:var(--text-muted)">${c.DESCRIPCION}</div>` : ''}
+                  <div style="display:flex;gap:6px;margin-top:4px">
+                    <button class="btn btn-sm btn-secondary" onclick="formEditarCompetencia('${c.ID_COMPETENCIA}','${(c.NOMBRE||'').replace(/'/g,"\\'")}','${c.CATEGORIA||''}','${(c.DESCRIPCION||'').replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarCompetencia('${c.ID_COMPETENCIA}','${c.NOMBRE}')"><i class="fas fa-trash"></i></button>
+                    <button class="btn btn-sm btn-secondary" onclick="buscarEmpPorCompetencia('${c.NOMBRE}')"><i class="fas fa-users"></i></button>
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>`).join('')}
+    </div>
+  </div>`);
+}
+
+function formNuevaCompetencia() {
+  openModal('Nueva Competencia', `
+    <div class="form-grid">
+      <div class="f-group"><label>Nombre *</label><input id="compNombre" placeholder="Ej: Soldadura MIG"/></div>
+      <div class="f-group"><label>Categoría</label>
+        <select id="compCat">
+          <option>General</option><option>Eléctrica</option><option>Metalmecánica</option>
+          <option>Telecomunicaciones</option><option>HVAC</option><option>Civil</option>
+          <option>Seguridad</option><option>Control</option>
+        </select>
+      </div>
+      <div class="f-group full"><label>Descripción</label><textarea id="compDesc" placeholder="Describe brevemente qué implica esta competencia..."></textarea></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Guardar', cls: 'btn-orange', action: 'guardarNuevaCompetencia()' }
+    ]);
+}
+
+async function guardarNuevaCompetencia() {
+  const datos = { NOMBRE: v('compNombre'), CATEGORIA: v('compCat'), DESCRIPCION: v('compDesc') };
+  if (!datos.NOMBRE) { toast('El nombre es requerido.', 'warning'); return; }
+  const res = await callApi('COMPETENCIAS', 'crear', datos);
+  if (res.ok) { toast('Competencia creada.', 'success'); closeModal(); competencias(); }
+  else toast(res.mensaje, 'error');
+}
+
+function formEditarCompetencia(id, nombre, cat, desc) {
+  openModal('Editar Competencia', `
+    <div class="form-grid">
+      <div class="f-group"><label>Nombre *</label><input id="compEditNom" value="${nombre}"/></div>
+      <div class="f-group"><label>Categoría</label>
+        <select id="compEditCat">
+          ${['General','Eléctrica','Metalmecánica','Telecomunicaciones','HVAC','Civil','Seguridad','Control'].map(c => `<option ${c===cat?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="f-group full"><label>Descripción</label><textarea id="compEditDesc">${desc}</textarea></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: 'Guardar', cls: 'btn-primary', action: `confirmarEditComp('${id}')` }
+    ]);
+}
+
+async function confirmarEditComp(id) {
+  const res = await callApi('COMPETENCIAS', 'actualizar', { ID_COMPETENCIA: id, NOMBRE: v('compEditNom'), CATEGORIA: v('compEditCat'), DESCRIPCION: v('compEditDesc') });
+  if (res.ok) { toast('Competencia actualizada.', 'success'); closeModal(); competencias(); }
+  else toast(res.mensaje, 'error');
+}
+
+async function eliminarCompetencia(id, nombre) {
+  if (!confirm(`¿Eliminar la competencia "${nombre}" del catálogo?`)) return;
+  const res = await callApi('COMPETENCIAS', 'eliminar', { idCompetencia: id });
+  if (res.ok) { toast('Competencia eliminada.', 'success'); competencias(); }
+  else toast(res.mensaje, 'error');
+}
+
+function modalBuscarPorCompetencia() {
+  openModal('Buscar Empleados por Competencia', `
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input id="busqComp" placeholder="Ej: Soldadura, Electricidad..." style="flex:1;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px"/>
+      <button class="btn btn-primary" onclick="ejecutarBusqComp()"><i class="fas fa-search"></i></button>
+    </div>
+    <div id="resultBusqComp" style="min-height:60px"></div>`,
+    [{ label: 'Cerrar', cls: 'btn-secondary', action: 'closeModal()' }]);
+}
+
+async function buscarEmpPorCompetencia(comp) {
+  openModal(`Empleados con: ${comp}`,
+    `<div style="text-align:center;padding:20px"><i class="fas fa-spinner fa-spin" style="font-size:20px;color:var(--ops-orange)"></i></div>`,
+    [{ label: 'Cerrar', cls: 'btn-secondary', action: 'closeModal()' }]);
+  const res = await callApi('EMPLEADOS', 'buscarPorCompetencia', { competencia: comp });
+  const body = document.getElementById('modalBody');
+  if (!body) return;
+  if (!res.ok || !res.datos.length) {
+    body.innerHTML = `<div class="empty-state"><i class="fas fa-users-slash"></i><h4>Sin resultados</h4><p>Ningún empleado activo tiene esta competencia.</p></div>`;
+    return;
+  }
+  body.innerHTML = `<p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">${res.datos.length} empleado(s) encontrado(s)</p>` +
+    res.datos.map(e => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:8px">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${(e.NOMBRE||'?').charAt(0)}</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--navy)">${e.NOMBRE}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${e.CARGO} · ${estadoPill(e.ESTADO)}</div>
+        </div>
+      </div>`).join('');
+}
+
+async function ejecutarBusqComp() {
+  const comp = v('busqComp');
+  if (!comp) { toast('Ingresa una competencia.', 'warning'); return; }
+  document.getElementById('resultBusqComp').innerHTML = '<div style="text-align:center;padding:20px"><i class="fas fa-spinner fa-spin" style="font-size:20px;color:var(--ops-orange)"></i></div>';
+  const res = await callApi('EMPLEADOS', 'buscarPorCompetencia', { competencia: comp });
+  const cont = document.getElementById('resultBusqComp');
+  if (!cont) return;
+  if (!res.ok || !res.datos.length) {
+    cont.innerHTML = `<div class="empty-state" style="padding:20px"><i class="fas fa-users-slash"></i><h4>Sin resultados</h4></div>`;
+    return;
+  }
+  cont.innerHTML = `<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">${res.datos.length} empleado(s)</p>` +
+    res.datos.map(e => `
+      <div style="display:flex;align-items:center;gap:12px;padding:9px;background:var(--bg);border-radius:8px;margin-bottom:6px">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">${(e.NOMBRE||'?').charAt(0)}</div>
+        <div><div style="font-size:13px;font-weight:700;color:var(--navy)">${e.NOMBRE}</div><div style="font-size:11px;color:var(--text-muted)">${e.CARGO}</div></div>
+        ${estadoPill(e.ESTADO)}
+      </div>`).join('');
+}
+
+// ============================================================
+// VISTA: REGISTRO GPS
+// ============================================================
+async function gps() {
+  mainContent(`<div class="card"><div class="card-header"><h3>Cargando registros GPS...</h3></div><div class="card-body">${skeletonTable(['ID','OT','Empleado','Fecha','Lat','Lng','Mapa'])}</div></div>`);
+  const res = await callApi('GPS', 'listar', {});
+  const lista = res.ok ? res.datos : [];
+  const hoy = new Date().toDateString();
+  const deHoy = lista.filter(g => new Date(g.FECHA).toDateString() === hoy).length;
+
+  mainContent(`
+  <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px">
+    <div class="stat-card" style="padding:14px 16px">
+      <div class="stat-icon orange" style="width:38px;height:38px;font-size:15px"><i class="fas fa-map-marker-alt"></i></div>
+      <div class="stat-info"><div class="stat-value" style="font-size:22px">${lista.length}</div><div class="stat-label">Total registros</div></div>
+    </div>
+    <div class="stat-card" style="padding:14px 16px">
+      <div class="stat-icon success" style="width:38px;height:38px;font-size:15px"><i class="fas fa-calendar-day"></i></div>
+      <div class="stat-info"><div class="stat-value" style="font-size:22px">${deHoy}</div><div class="stat-label">Check-ins hoy</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-map-marked-alt" style="color:var(--ops-orange);margin-right:8px"></i>Historial de Ubicaciones GPS</h3>
+      <div style="display:flex;gap:8px">
+        <input type="text" class="filter-sel" id="gpsEmpFiltro" placeholder="Filtrar por empleado" style="padding:9px 12px" oninput="filtrarTabla(this,'tblGPS')"/>
+      </div>
+    </div>
+    <div class="card-body" style="padding-top:14px">
+      <div class="table-wrap">
+        <table id="tblGPS">
+          <thead><tr><th>ID GPS</th><th>OT</th><th>Empleado</th><th>Fecha/Hora</th><th>Tipo</th><th>Mapa</th><th>Observaciones</th></tr></thead>
+          <tbody>
+            ${lista.length === 0
+              ? `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-map-marked-alt"></i><h4>Sin registros GPS</h4><p>Los empleados envían su ubicación desde el Portal Técnico.</p></div></td></tr>`
+              : [...lista].reverse().map(g => `<tr>
+                <td class="td-mono">${g.ID_GPS || '—'}</td>
+                <td class="td-mono">${g.OT || '—'}</td>
+                <td style="font-weight:600">${g.EMPLEADO || '—'}</td>
+                <td style="font-size:12px">${g.FECHA ? new Date(g.FECHA).toLocaleString('es-CO') : '—'}</td>
+                <td><span class="pill ${g.TIPO === 'FOTO_PRESENCIA' ? 'pill-success' : g.TIPO === 'GPS_MANUAL' ? 'pill-info' : 'pill-navy'}">${g.TIPO || '—'}</span></td>
+                <td>${g.LINK_MAPA ? `<a href="${g.LINK_MAPA}" target="_blank" class="btn btn-sm btn-secondary"><i class="fas fa-external-link-alt"></i> Ver</a>` : '—'}</td>
+                <td style="font-size:12px;color:var(--text-muted)">${g.OBSERVACIONES || '—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`);
+}
+
+
 window.addEventListener('DOMContentLoaded', () => {
   const savedToken = localStorage.getItem('erp_ops_token');
   const savedSesion = localStorage.getItem('erp_ops_sesion');
