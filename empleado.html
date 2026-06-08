@@ -1114,6 +1114,14 @@ async function verOT(idOT) {
   }
 
   CFG.otDetalle = ot;
+
+  // Cargar evidencias frescas desde la API (contienen la foto real ARCHIVO/URL)
+  const resEv = await api('EVIDENCIAS', 'listar', { idOT: idOT });
+  if (resEv.ok && resEv.datos && resEv.datos.length > 0) {
+    ot = { ...ot, EVIDENCIAS: resEv.datos };
+    CFG.otDetalle = ot;
+  }
+
   renderDetalleOT(ot);
 }
 
@@ -1194,6 +1202,7 @@ function renderDetalleOT(ot) {
                 <div class="act-sub">${a.FECHA ? fmtFecha(a.FECHA) : ''}</div>
               </div>
             </div>`).join('')}
+        ${puedeEditar ? `<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="sheetAgregarActividad('${ot.ID_OT}')"><i class="fas fa-plus"></i> Agregar actividad</button>` : ''}
       </div>
     </div>
 
@@ -1201,7 +1210,7 @@ function renderDetalleOT(ot) {
     <div class="card">
       <div class="card-body" style="padding:14px 16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <strong style="font-size:14px;color:var(--navy)"><i class="fas fa-boxes-stacked" style="color:var(--blue);margin-right:6px"></i>Materiales (${materiales.length})</strong>
+          <strong style="font-size:14px;color:var(--navy)"><i class="fas fa-boxes-stacked" style="color:var(--blue);margin-right:6px"></i>Materiales Consumidos (${materiales.length})</strong>
         </div>
         ${materiales.length === 0
           ? '<p style="font-size:13px;color:var(--text-muted)">Sin consumo de materiales.</p>'
@@ -1213,6 +1222,33 @@ function renderDetalleOT(ot) {
                 <div class="act-sub">Cantidad: ${m.CANTIDAD || 1}</div>
               </div>
             </div>`).join('')}
+        ${puedeEditar ? `<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="sheetRegistrarMaterial('${ot.ID_OT}')"><i class="fas fa-plus"></i> Registrar consumo</button>` : ''}
+      </div>
+    </div>
+
+    <!-- Evidencias -->
+    <div class="card">
+      <div class="card-body" style="padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <strong style="font-size:14px;color:var(--navy)"><i class="fas fa-camera" style="color:var(--success);margin-right:6px"></i>Evidencias (${evidencias.length})</strong>
+          ${puedeEditar ? `<button class="btn btn-sm btn-secondary" onclick="sheetFotoPresencia('${ot.ID_OT}')"><i class="fas fa-camera"></i> Agregar evidencia</button>` : ''}
+        </div>
+        ${evidencias.length === 0
+          ? '<p style="font-size:13px;color:var(--text-muted)">Sin evidencias registradas.</p>'
+          : `<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px">
+              ${evidencias.map(e => `
+                <div style="flex-shrink:0;width:150px">
+                  <div style="width:150px;height:112px;border-radius:10px;overflow:hidden;background:var(--bg);margin-bottom:5px;border:1px solid var(--border)">
+                    ${(e.ARCHIVO || e.URL_FOTO || e.FOTO)
+                      ? `<img src="${e.ARCHIVO || e.URL_FOTO || e.FOTO}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)\\'><i class=\\"fas fa-image\\" style=\\"font-size:24px\\"></i></div>'" loading="lazy"/>`
+                      : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)"><i class="fas fa-image" style="font-size:24px"></i></div>`}
+                  </div>
+                  <div style="font-size:11px;font-weight:600;color:var(--text-mid)">${e.TIPO || 'FOTO_PRESENCIA'}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">${e.FECHA ? fmtFecha(e.FECHA) : ''}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">${(e.OBSERVACIONES || '').substring(0, 40)}</div>
+                  ${e.GPS_LINK ? `<a href="${e.GPS_LINK}" target="_blank" style="font-size:11px;color:var(--orange);font-weight:600"><i class="fas fa-map-marker-alt"></i> Ver mapa</a>` : ''}
+                </div>`).join('')}
+            </div>`}
       </div>
     </div>
 
@@ -1222,10 +1258,13 @@ function renderDetalleOT(ot) {
       <div class="card-body" style="padding:14px 16px">
         <strong style="font-size:14px;color:var(--navy)"><i class="fas fa-signature" style="color:var(--orange);margin-right:6px"></i>Firma del Cliente</strong>
         <p style="font-size:13px;color:var(--text-muted);margin:8px 0 12px">
-          ${ot.FIRMA_CLIENTE ? 'Firma ya registrada.' : 'El cliente debe firmar antes de cerrar la OT.'}
+          ${ot.FIRMA_CLIENTE ? 'Firma registrada correctamente.' : 'El cliente debe firmar antes de cerrar la OT.'}
         </p>
         ${ot.FIRMA_CLIENTE
-          ? `<div class="alert alert-success"><i class="fas fa-check-circle"></i>Firma registrada</div>`
+          ? `<div style="border:2px solid var(--success);border-radius:10px;overflow:hidden;background:white;margin-bottom:10px;max-width:100%">
+               <img src="${ot.FIRMA_CLIENTE}" style="width:100%;max-height:160px;object-fit:contain;display:block;padding:8px" onerror="this.parentElement.innerHTML='<div class=\\'alert alert-success\\'><i class=\\"fas fa-check-circle\\"></i> Firma registrada (imagen no disponible)</div>'"/>
+             </div>
+             <div class="alert alert-success" style="margin-bottom:0"><i class="fas fa-check-circle"></i>Firma del cliente registrada</div>`
           : `<button class="btn btn-orange btn-full" onclick="sheetFirmaCliente('${ot.ID_OT}')">
                <i class="fas fa-pen"></i> Tomar Firma del Cliente
              </button>`}
@@ -1940,8 +1979,10 @@ async function cargarRegistros() {
         <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px">
           ${fotosOT.map(e => `
             <div style="flex-shrink:0;width:140px">
-              <div style="width:140px;height:105px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:4px">
-                <i class="fas fa-image" style="font-size:28px;color:var(--border)"></i>
+              <div style="width:140px;height:105px;border-radius:10px;background:var(--bg);overflow:hidden;margin-bottom:4px;border:1px solid var(--border)">
+                ${e.ARCHIVO || e.URL_FOTO || e.FOTO
+                  ? `<img src="${e.ARCHIVO || e.URL_FOTO || e.FOTO}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" onerror="this.parentElement.style.display='flex';this.parentElement.style.alignItems='center';this.parentElement.style.justifyContent='center';this.outerHTML='<i class=\\'fas fa-image\\' style=\\'font-size:28px;color:var(--border)\\'></i>'">`
+                  : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><i class="fas fa-image" style="font-size:28px;color:var(--border)"></i></div>`}
               </div>
               <div style="font-size:11px;color:var(--text-muted)">${e._otId}</div>
               <div style="font-size:10px;color:var(--text-muted)">${e.FECHA ? new Date(e.FECHA).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : '—'}</div>
