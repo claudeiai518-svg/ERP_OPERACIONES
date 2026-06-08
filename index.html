@@ -3017,65 +3017,85 @@ async function descargarPDFActa(a) {
   const obs   = a.OBSERVACIONES || 'Sin observaciones adicionales.';
 
   container.innerHTML = `
-    <div style="background:linear-gradient(135deg,#0f1f5c,#ea580c);padding:36px 48px 28px;color:white">
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
-        <div style="width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:24px">🏗</div>
-        <div>
-          <div style="font-size:22px;font-weight:800;letter-spacing:-.3px">Grupo WEDM</div>
-          <div style="font-size:11px;opacity:.7;letter-spacing:.1em;text-transform:uppercase">Metal Mecánica · ERP Operaciones</div>
+    <div style="padding:56px 64px 48px;min-height:1122px;box-sizing:border-box;position:relative">
+
+      <!-- Logo / encabezado empresa -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:48px;padding-bottom:18px;border-bottom:3px solid #0f1f5c">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#0f1f5c,#ea580c);display:flex;align-items:center;justify-content:center;color:white;font-size:26px;font-weight:900">W</div>
+          <div>
+            <div style="font-size:19px;font-weight:800;color:#0f1f5c;letter-spacing:-.3px">GRUPO WEDM</div>
+            <div style="font-size:10.5px;color:#6b7280;letter-spacing:.08em;text-transform:uppercase;margin-top:1px">Metal Mecánica · Servicios Técnicos</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10.5px;color:#6b7280">Ref. acta:</div>
+          <div style="font-size:15px;font-weight:800;color:#0f1f5c;font-family:monospace">${a.ID_ACTA || '—'}</div>
         </div>
       </div>
-      <div style="font-size:26px;font-weight:800;margin-top:6px">Acta de Entrega</div>
-      <div style="font-size:12px;opacity:.75;margin-top:2px">Documento generado automáticamente por el sistema ERP</div>
-    </div>
 
-    <div style="padding:32px 48px">
-
-      <!-- Encabezado datos -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1.5px solid #dde3f3;border-radius:10px;overflow:hidden;margin-bottom:28px">
-        ${[
-          ['ID Acta', a.ID_ACTA || '—'],
-          ['OT Asociada', a.OT || '—'],
-          ['Fecha', fecha],
-          ['Cliente', a.CLIENTE || '—'],
-          ['Recibido por', a.FIRMA || '—'],
-          ['Estado', 'Cerrada ✓'],
-        ].map(([ lbl, val ], i) => `
-          <div style="padding:14px 18px;border-right:${i%3<2?'1.5px solid #dde3f3':'none'};border-bottom:${i<3?'1.5px solid #dde3f3':'none'};background:${i%2===0?'#f9fafb':'white'}">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6b7280;margin-bottom:4px">${lbl}</div>
-            <div style="font-size:13.5px;font-weight:700;color:#0f1f5c">${val}</div>
-          </div>`).join('')}
+      <!-- Ciudad y fecha -->
+      <div style="font-size:13px;color:#374151;margin-bottom:28px">
+        Ibagué, <span style="border-bottom:1px solid #374151;display:inline-block;min-width:160px;padding-bottom:1px">${fecha}</span>
       </div>
 
-      <!-- Observaciones -->
-      <div style="margin-bottom:28px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin-bottom:8px;border-bottom:2px solid #f0a500;padding-bottom:5px">Descripción del Servicio / Observaciones</div>
-        <div style="background:#f9fafb;border:1.5px solid #dde3f3;border-radius:8px;padding:16px 20px;font-size:13px;color:#374151;line-height:1.7;min-height:80px">${obs}</div>
+      <!-- Título -->
+      <div style="text-align:center;margin-bottom:28px">
+        <div style="font-size:15px;font-weight:800;color:#0f1f5c;text-transform:uppercase;letter-spacing:.04em;line-height:1.4">
+          ACTA DE ENTREGA DE SERVICIO<br>
+          <span style="font-size:13px;font-weight:700">OT: ${a.OT || '—'}</span>
+        </div>
+      </div>
+
+      <!-- Cuerpo principal -->
+      <div style="font-size:13px;color:#374151;line-height:1.9;margin-bottom:32px">
+        <p style="margin-bottom:14px">
+          El día <strong>${fecha}</strong>, la empresa <strong>Grupo WEDM</strong> realizó la prestación del servicio técnico
+          correspondiente a la Orden de Trabajo <strong>${a.OT || '—'}</strong> para el cliente
+          <strong>${a.CLIENTE || '—'}</strong>.
+        </p>
+        <p style="margin-bottom:14px">
+          <strong>Descripción del trabajo realizado:</strong><br>
+          ${obs}
+        </p>
+        <p style="margin-bottom:0">
+          La entrega se realiza a conformidad del cliente. El trabajo fue recibido a conformidad
+          por el (la) señor (a): <span style="border-bottom:1px solid #374151;display:inline-block;min-width:200px;padding-bottom:1px">&nbsp;${a.FIRMA || ''}&nbsp;</span>
+        </p>
       </div>
 
       <!-- Firmas -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:40px">
-        <div>
-          <div style="border-top:2px solid #0f1f5c;padding-top:10px;text-align:center">
-            ${a.FIRMA_IMAGEN ? `<img src="${a.FIRMA_IMAGEN}" style="max-height:70px;max-width:180px;object-fit:contain;display:block;margin:0 auto 8px"/>` : '<div style="height:56px"></div>'}
-            <div style="font-size:12px;font-weight:700;color:#0f1f5c">${a.FIRMA || 'Nombre del receptor'}</div>
-            <div style="font-size:10.5px;color:#6b7280;margin-top:2px">Recibido por / Cliente</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:60px">
+        <div style="text-align:center">
+          ${a.FIRMA_IMAGEN
+            ? `<img src="${a.FIRMA_IMAGEN}" style="max-height:72px;max-width:180px;object-fit:contain;display:block;margin:0 auto 6px"/>`
+            : '<div style="height:64px"></div>'}
+          <div style="border-top:1.5px solid #374151;padding-top:8px;margin-top:4px">
+            <div style="font-size:12.5px;font-weight:700;color:#0f1f5c;text-transform:uppercase">${a.FIRMA || 'QUIEN RECIBE'}</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:3px">Cliente / Receptor del servicio</div>
           </div>
         </div>
-        <div>
-          <div style="border-top:2px solid #ea580c;padding-top:10px;text-align:center">
-            <div style="height:56px"></div>
-            <div style="font-size:12px;font-weight:700;color:#0f1f5c">Grupo WEDM</div>
-            <div style="font-size:10.5px;color:#6b7280;margin-top:2px">Técnico / Empresa prestadora</div>
+        <div style="text-align:center">
+          <div style="height:64px"></div>
+          <div style="border-top:1.5px solid #374151;padding-top:8px;margin-top:4px">
+            <div style="font-size:12.5px;font-weight:700;color:#0f1f5c;text-transform:uppercase">GRUPO WEDM</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:3px">Técnico / Empresa prestadora</div>
           </div>
         </div>
       </div>
 
-      <!-- Footer -->
-      <div style="margin-top:40px;padding-top:14px;border-top:1px solid #dde3f3;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:10px;color:#9ca3af">ERP OPERACIONES v1.0.0 · Grupo WEDM · Metal Mecánica</div>
-        <div style="font-size:10px;color:#9ca3af">Generado el ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})}</div>
+      <!-- Fecha y hora al pie -->
+      <div style="margin-top:52px">
+        <div style="font-size:11.5px;color:#374151;margin-bottom:8px">FECHA: <span style="border-bottom:1px solid #374151;display:inline-block;min-width:120px">&nbsp;</span></div>
+        <div style="font-size:11.5px;color:#374151">HORA: <span style="border-bottom:1px solid #374151;display:inline-block;min-width:120px">&nbsp;</span></div>
       </div>
+
+      <!-- Footer -->
+      <div style="position:absolute;bottom:32px;left:64px;right:64px;border-top:1px solid #dde3f3;padding-top:10px;display:flex;justify-content:space-between">
+        <div style="font-size:9.5px;color:#9ca3af">Grupo WEDM · ERP Operaciones v1.0.0</div>
+        <div style="font-size:9.5px;color:#9ca3af">Generado el ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})}</div>
+      </div>
+
     </div>`;
 
   document.body.appendChild(container);
