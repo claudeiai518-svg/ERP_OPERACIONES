@@ -671,6 +671,17 @@ async function api(modulo, accion, datos = {}) {
   });
 }
 
+async function callApi(m, a, d = {}) {
+  if (!NO_CACHE.has(a)) {
+    const cached = Cache.get(m, a, d);
+    if (cached) return cached;
+  }
+  const result = await api(m, a, d);
+  if (result.ok && !NO_CACHE.has(a)) Cache.set(m, a, d, result);
+  if (result.ok && NO_CACHE.has(a)) Cache.invalidate(m);
+  return result;
+}
+
 // API POST (para payloads grandes como base64, actas con firma, etc.)
 async function apiPost(modulo, accion, datos = {}) {
   try {
@@ -685,17 +696,6 @@ async function apiPost(modulo, accion, datos = {}) {
   } catch (e) {
     return { ok: false, mensaje: 'Error POST: ' + e.message };
   }
-}
-
-async function callApi(m, a, d = {}) {
-  if (!NO_CACHE.has(a)) {
-    const cached = Cache.get(m, a, d);
-    if (cached) return cached;
-  }
-  const result = await api(m, a, d);
-  if (result.ok && !NO_CACHE.has(a)) Cache.set(m, a, d, result);
-  if (result.ok && NO_CACHE.has(a)) Cache.invalidate(m);
-  return result;
 }
 
 // ============================================================
@@ -1338,7 +1338,12 @@ async function verDetalleOT(idOT) {
       </div>
       <div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Firma Cliente</div>
-        <div style="font-size:13px">${ot.FIRMA_CLIENTE || '—'}</div>
+        ${ot.FIRMA_CLIENTE
+          ? `<div style="border:2px solid var(--success);border-radius:8px;overflow:hidden;background:white;max-width:220px;margin-top:4px">
+               <img src="${ot.FIRMA_CLIENTE}" style="width:100%;max-height:90px;object-fit:contain;display:block;padding:4px"
+                 onerror="this.parentElement.innerHTML='<span style=\\'font-size:12px;color:var(--success);padding:6px;display:block\\'>✅ Firma registrada</span>'"/>
+             </div>`
+          : `<div style="font-size:13px;color:var(--text-muted)">—</div>`}
       </div>
     </div>
 
@@ -1377,15 +1382,27 @@ async function verDetalleOT(idOT) {
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px"><i class="fas fa-camera" style="color:var(--success);margin-right:6px"></i>Evidencias (${evidencias.length})</div>
       ${evidencias.length === 0
         ? '<p style="font-size:13px;color:var(--text-muted)">Sin evidencias.</p>'
-        : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            ${evidencias.map(e => `
-              <div style="background:var(--bg);border-radius:8px;padding:8px 10px;font-size:12.5px">
-                <div style="font-weight:600">${e.TIPO}</div>
-                <div style="color:var(--text-muted)">${fmtFecha(e.FECHA)}</div>
-                <div style="color:var(--text-muted)">${e.OBSERVACIONES||''}</div>
-              </div>`).join('')}
+        : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:10px">
+            ${evidencias.map(e => {
+              const src = e.ARCHIVO || e.URL_FOTO || e.FOTO || '';
+              return `
+              <div style="background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+                ${src
+                  ? `<div style="width:100%;height:120px;overflow:hidden;background:#000;cursor:pointer" onclick="window.open('${src}','_blank')" title="Ver imagen completa">
+                       <img src="${src}" style="width:100%;height:100%;object-fit:cover;display:block;transition:.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"
+                         onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;color:#aaa\\'><i class=\\'fas fa-image\\' style=\\'font-size:28px\\'></i></div>'"/>
+                     </div>`
+                  : `<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fas fa-image" style="font-size:28px"></i></div>`}
+                <div style="padding:7px 10px">
+                  <div style="font-size:11px;font-weight:700;color:var(--navy)">${e.TIPO || '—'}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">${fmtFecha(e.FECHA)}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">${(e.OBSERVACIONES||'').substring(0,45)}</div>
+                  ${e.GPS_LINK ? `<a href="${e.GPS_LINK}" target="_blank" style="font-size:11px;color:var(--ops-orange);font-weight:600"><i class="fas fa-map-marker-alt"></i> Ver mapa</a>` : ''}
+                </div>
+              </div>`;
+            }).join('')}
           </div>`}
-      <button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="formRegistrarEvidencia('${idOT}')">
+      <button class="btn btn-sm btn-secondary" style="margin-top:4px" onclick="formRegistrarEvidencia('${idOT}')">
         <i class="fas fa-camera"></i> Agregar evidencia
       </button>
     </div>`;
@@ -1528,7 +1545,7 @@ async function confirmarActa(idOT) {
   const obs     = v('actaObs');
   if (!cliente) { toast('El cliente es requerido.', 'warning'); return; }
 
-  // Deshabilitar botón
+  // Deshabilitar botón mientras procesa
   const btn = document.querySelector('.modal-footer .btn-success');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...'; }
 
