@@ -1078,48 +1078,37 @@ function otCardHTML(ot) {
 async function verOT(idOT) {
   navegarA('detalle');
 
-  // Buscar en las OTs ya cargadas
-  let ot = CFG.misOTs.find(o => o.ID_OT === idOT);
+  document.getElementById('page-detalle').innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;gap:12px">
+      <div class="loader-spinner"></div>
+      <p style="font-size:13px;color:var(--text-muted)">Cargando OT...</p>
+    </div>`;
 
-  // Si no está en cache, recargar lista
-  if (!ot) {
-    document.getElementById('page-detalle').innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;gap:12px">
-        <div class="loader-spinner"></div>
-        <p style="font-size:13px;color:var(--text-muted)">Cargando OT...</p>
-      </div>`;
-    cacheClear();
-    const res = await api('ORDENES_TRABAJO', 'listar', {});
-    if (!res.ok) {
-      document.getElementById('page-detalle').innerHTML = `
-        <div style="padding:20px">
-          <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i>${res.mensaje}</div>
-          <button class="btn btn-secondary btn-full" onclick="navegarA('ots')"><i class="fas fa-arrow-left"></i> Volver</button>
-        </div>`;
-      return;
-    }
-    const todas = res.datos || [];
-    CFG.misOTs = todas;
-    cacheSet('misOTs', todas);
-    ot = todas.find(o => o.ID_OT === idOT);
-  }
+  // Usar obtener que devuelve OT + actividades + materiales + evidencias
+  const res = await api('ORDENES_TRABAJO', 'obtener', { idOT });
 
-  if (!ot) {
+  if (!res.ok) {
     document.getElementById('page-detalle').innerHTML = `
       <div style="padding:20px">
-        <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i>No se encontró la OT ${idOT}</div>
+        <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i>${res.mensaje}</div>
         <button class="btn btn-secondary btn-full" onclick="navegarA('ots')"><i class="fas fa-arrow-left"></i> Volver</button>
       </div>`;
     return;
   }
 
+  // obtener devuelve { ot, actividades, materiales, evidencias }
+  let ot = {
+    ...res.datos.ot,
+    ACTIVIDADES_OT:        res.datos.actividades || [],
+    CONSUMO_MATERIALES_OT: res.datos.materiales  || [],
+    EVIDENCIAS:            res.datos.evidencias  || [],
+  };
+
   CFG.otDetalle = ot;
 
-  // Cargar evidencias frescas desde la API
-  const resEv = await api('EVIDENCIAS', 'listar', { idOT: idOT });
-  if (resEv.ok && resEv.datos && resEv.datos.length > 0) {
-    // Cargar la foto real (base64) de cada evidencia en paralelo
-    const evConFotos = await Promise.all(resEv.datos.map(async (e) => {
+  // Cargar foto real (base64) de cada evidencia que la tenga
+  if (ot.EVIDENCIAS.length > 0) {
+    const evConFotos = await Promise.all(ot.EVIDENCIAS.map(async (e) => {
       if (e.TIENE_FOTO && e.ID_EVIDENCIA) {
         const resF = await api('EVIDENCIAS', 'obtener', { idEvidencia: e.ID_EVIDENCIA });
         if (resF.ok && resF.datos && resF.datos.ARCHIVO) {
