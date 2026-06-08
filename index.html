@@ -519,6 +519,9 @@ select.filter-sel:focus { border-color: var(--ops-orange); outline: none; }
           <i class="fas fa-bolt"></i> Órdenes de Trabajo
           <span class="nav-badge" id="navBadgeOT" style="display:none">0</span>
         </div>
+        <div class="nav-item" data-view="seguimiento" onclick="navigate('seguimiento')">
+          <i class="fas fa-route"></i> Seguimiento OT
+        </div>
         <div class="nav-item" data-view="visitas" onclick="navigate('visitas')">
           <i class="fas fa-map-marker-alt"></i> Visitas Técnicas
         </div>
@@ -789,6 +792,7 @@ const VIEW_TITLES = {
   actas: 'Actas de Entrega', sistema: 'Administración del Sistema',
   empleados: 'Gestión de Empleados', competencias: 'Catálogo de Competencias',
   gps: 'Registro GPS', monitor: '🛰️ Monitor en Vivo',
+  seguimiento: '🔍 Seguimiento de OT',
 };
 
 function navigate(view) {
@@ -797,7 +801,7 @@ function navigate(view) {
   const active = document.querySelector(`[data-view="${view}"]`);
   if (active) active.classList.add('active');
   document.getElementById('topbarTitle').textContent = VIEW_TITLES[view] || view;
-  const views = { dashboard, servicios, ordenes, visitas, programacion, cuadrillas, actas, sistema, empleados, competencias, gps, monitor };
+  const views = { dashboard, servicios, ordenes, visitas, programacion, cuadrillas, actas, sistema, empleados, competencias, gps, monitor, seguimiento };
   if (views[view]) views[view]();
   else mainContent(`<div class="empty-state"><i class="fas fa-wrench"></i><h4>Próximamente</h4><p>Esta sección está en desarrollo.</p></div>`);
 }
@@ -1283,18 +1287,25 @@ function formNuevaOT(idServicio = '', clienteRef = '') {
   openModal('Nueva Orden de Trabajo', `
     <div class="form-grid">
       <div class="f-group"><label>Servicio Asociado *</label><input id="otServicio" value="${idServicio}" placeholder="ID del servicio (ej: SRV-001)"/></div>
-      <div class="f-group"><label>Técnico Asignado *</label><input id="otTecnico" placeholder="Nombre del técnico"/></div>
+      <div class="f-group"><label>Técnico / Empleado Asignado *</label>
+        <select id="otTecnico" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:white;transition:border-color var(--trans)">
+          <option value="">⏳ Cargando empleados...</option>
+        </select>
+      </div>
       <div class="f-group"><label>Fecha Programada</label><input id="otFecha" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
       <div class="f-group"><label>Estado</label>
         <select id="otEstado">
           <option>Pendiente</option><option>En Proceso</option>
         </select>
       </div>
+      <div class="f-group full"><label>Descripción / Observaciones</label><textarea id="otDesc" placeholder="Detalle del trabajo a realizar..."></textarea></div>
     </div>`,
     [
       { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
       { label: '<i class="fas fa-bolt"></i> Crear OT', cls: 'btn-orange', action: 'guardarNuevaOT()' }
     ]);
+  // Cargar empleados activos en el select
+  _cargarEmpleadosEnSelect('otTecnico');
 }
 
 async function guardarNuevaOT() {
@@ -1625,7 +1636,11 @@ function formNuevaVisita() {
   openModal('Registrar Visita Técnica', `
     <div class="form-grid">
       <div class="f-group"><label>Cliente *</label><input id="visCliente" placeholder="Nombre del cliente"/></div>
-      <div class="f-group"><label>Técnico *</label><input id="visTecnico" placeholder="Técnico que realiza la visita"/></div>
+      <div class="f-group"><label>Técnico *</label>
+        <select id="visTecnico" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:white">
+          <option value="">⏳ Cargando empleados...</option>
+        </select>
+      </div>
       <div class="f-group"><label>Fecha *</label><input id="visFecha" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
       <div class="f-group"><label>Resultado</label>
         <select id="visResultado">
@@ -1638,6 +1653,7 @@ function formNuevaVisita() {
       { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
       { label: '<i class="fas fa-map-pin"></i> Registrar', cls: 'btn-orange', action: 'guardarVisita()' }
     ]);
+  _cargarEmpleadosEnSelect('visTecnico');
 }
 
 async function guardarVisita() {
@@ -1732,7 +1748,11 @@ async function filtrarProgFecha(fecha) {
 function formNuevaProgramacion() {
   openModal('Programar Personal', `
     <div class="form-grid">
-      <div class="f-group"><label>Empleado *</label><input id="progEmp" placeholder="Nombre del empleado o técnico"/></div>
+      <div class="f-group"><label>Empleado *</label>
+        <select id="progEmp" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:white">
+          <option value="">⏳ Cargando empleados...</option>
+        </select>
+      </div>
       <div class="f-group"><label>Fecha *</label><input id="progFecha" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
       <div class="f-group"><label>Hora Inicio *</label><input id="progInicio" type="time" value="07:00"/></div>
       <div class="f-group"><label>Hora Fin *</label><input id="progFin" type="time" value="17:00"/></div>
@@ -1742,6 +1762,7 @@ function formNuevaProgramacion() {
       { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
       { label: '<i class="fas fa-calendar-plus"></i> Programar', cls: 'btn-orange', action: 'guardarProgramacion()' }
     ]);
+  _cargarEmpleadosEnSelect('progEmp');
 }
 
 async function guardarProgramacion() {
@@ -2793,6 +2814,159 @@ async function enviarMsgAdmin() {
   }
 }
 
+
+// ============================================================
+// HELPER: Cargar empleados activos en un <select>
+// ============================================================
+async function _cargarEmpleadosEnSelect(selectId, incluirTodos = false) {
+  const res = await callApi('EMPLEADOS', 'listar', {});
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const empleados = res.ok ? res.datos.filter(e => e.ESTADO === 'Activo' || e.ESTADO === 'Vacaciones') : [];
+  sel.innerHTML = (incluirTodos ? '<option value="">— Todos —</option>' : '<option value="">Seleccionar empleado...</option>') +
+    empleados.map(e => `<option value="${e.NOMBRE}">${e.NOMBRE} · ${e.CARGO || '—'}</option>`).join('') +
+    (empleados.length === 0 ? '<option value="" disabled>Sin empleados activos</option>' : '');
+  sel.style.borderColor = '';
+  sel.onfocus = function() { this.style.borderColor = 'var(--ops-orange)'; this.style.boxShadow = '0 0 0 3px rgba(234,88,12,.1)'; };
+  sel.onblur  = function() { this.style.borderColor = ''; this.style.boxShadow = ''; };
+}
+
+// ============================================================
+// VISTA: SEGUIMIENTO DE OT — timeline Servicio → OT → Actividades → Acta
+// ============================================================
+let _segOTs = [];
+let _segFiltroEmp = '';
+let _segFiltroEst = '';
+
+async function seguimiento() {
+  mainContent(`<div class="card"><div class="card-header"><h3><i class="fas fa-route" style="color:var(--ops-orange);margin-right:8px"></i>Cargando seguimiento...</h3></div><div class="card-body">${skeletonTable(['OT','Técnico','Estado','Progreso'])}</div></div>`);
+
+  const [resOT, resEmp] = await Promise.all([
+    callApi('ORDENES_TRABAJO', 'listar', {}),
+    callApi('EMPLEADOS', 'listar', {}),
+  ]);
+  _segOTs = resOT.ok ? resOT.datos : [];
+  const empleadosList = resEmp.ok ? resEmp.datos : [];
+
+  mainContent(`
+  <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
+    <div class="search-box" style="flex:1;min-width:220px">
+      <i class="fas fa-search"></i>
+      <input type="text" placeholder="Buscar OT, servicio, cliente..." oninput="filtrarSeguimiento(this.value,'')"/>
+    </div>
+    <select class="filter-sel" id="segFiltroEmp" onchange="_segFiltroEmp=this.value;renderSeguimiento()">
+      <option value="">Todos los técnicos</option>
+      ${empleadosList.map(e=>`<option value="${e.NOMBRE}">${e.NOMBRE}</option>`).join('')}
+    </select>
+    <select class="filter-sel" id="segFiltroEst" onchange="_segFiltroEst=this.value;renderSeguimiento()">
+      <option value="">Todos los estados</option>
+      <option>Pendiente</option><option>En Proceso</option><option>En Revisión</option><option>Cerrada</option>
+    </select>
+    <button class="btn btn-orange" onclick="navigate('ordenes');setTimeout(()=>formNuevaOT(),400)">
+      <i class="fas fa-plus"></i> Nueva OT
+    </button>
+  </div>
+  <div id="segContainer"></div>`);
+  renderSeguimiento();
+}
+
+function filtrarSeguimiento(q) {
+  const val = q.toLowerCase();
+  const filtrados = _segOTs.filter(ot => {
+    const matchQ = !val || Object.values(ot).some(v => String(v).toLowerCase().includes(val));
+    const matchEmp = !_segFiltroEmp || ot.TECNICO === _segFiltroEmp;
+    const matchEst = !_segFiltroEst || ot.ESTADO === _segFiltroEst;
+    return matchQ && matchEmp && matchEst;
+  });
+  _renderSegCards(filtrados);
+}
+
+function renderSeguimiento() {
+  const filtrados = _segOTs.filter(ot => {
+    const matchEmp = !_segFiltroEmp || ot.TECNICO === _segFiltroEmp;
+    const matchEst = !_segFiltroEst || ot.ESTADO === _segFiltroEst;
+    return matchEmp && matchEst;
+  });
+  _renderSegCards(filtrados);
+}
+
+function _renderSegCards(lista) {
+  const cont = document.getElementById('segContainer');
+  if (!cont) return;
+  if (!lista.length) {
+    cont.innerHTML = `<div class="empty-state"><i class="fas fa-route"></i><h4>Sin OT que mostrar</h4><p>Ajusta los filtros o crea una nueva OT.</p></div>`;
+    return;
+  }
+
+  const estadoSteps = { 'Pendiente':1, 'En Proceso':2, 'En Revisión':3, 'Cerrada':4, 'Cancelado':0 };
+  const stepColors = ['var(--text-muted)','var(--warning)','var(--info)','var(--ops-orange)','var(--success)'];
+  const stepLabels = ['—','Pendiente','En Proceso','En Revisión','Cerrada'];
+
+  cont.innerHTML = lista.map(ot => {
+    const paso = estadoSteps[ot.ESTADO] ?? 1;
+    const cancelado = ot.ESTADO === 'Cancelado';
+
+    const steps = [
+      { icon: 'fa-charging-station', label: 'Servicio', id: ot.SERVICIO || '—', done: paso >= 1 && !cancelado },
+      { icon: 'fa-bolt',             label: 'OT Creada', id: ot.ID_OT, done: paso >= 1 && !cancelado },
+      { icon: 'fa-cog',              label: 'En Proceso', id: '', done: paso >= 2 && !cancelado },
+      { icon: 'fa-search',           label: 'Revisión',  id: '', done: paso >= 3 && !cancelado },
+      { icon: 'fa-check-circle',     label: 'Cerrada',   id: '', done: paso >= 4 && !cancelado },
+    ];
+
+    const pct = cancelado ? 0 : Math.round((paso / 4) * 100);
+    const colorBarra = cancelado ? 'var(--text-muted)' : stepColors[paso];
+
+    return `
+    <div class="card" style="margin-bottom:14px;${cancelado?'opacity:.65':''}">
+      <div style="padding:16px 22px 12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          <span class="td-mono" style="font-size:15px;font-weight:800;color:var(--navy);cursor:pointer" onclick="verDetalleOT('${ot.ID_OT}')">${ot.ID_OT}</span>
+          ${estadoPill(ot.ESTADO)}
+          ${ot.HORAS_TRABAJADAS ? `<span class="pill pill-navy" style="font-size:10.5px"><i class="fas fa-clock" style="margin-right:3px"></i>${ot.HORAS_TRABAJADAS}h</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${(ot.TECNICO||'?').charAt(0).toUpperCase()}</div>
+          <span style="font-size:13px;font-weight:600;color:var(--navy)">${ot.TECNICO || '—'}</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-secondary" title="Ver detalle" onclick="verDetalleOT('${ot.ID_OT}')"><i class="fas fa-eye"></i></button>
+          <button class="btn btn-sm btn-warning" title="Cambiar estado" onclick="modalCambiarEstadoOT('${ot.ID_OT}','${ot.ESTADO}')"><i class="fas fa-exchange-alt"></i></button>
+          <button class="btn btn-sm btn-primary" title="Registrar horas" onclick="modalRegistrarHoras('${ot.ID_OT}')"><i class="fas fa-clock"></i></button>
+          ${ot.ESTADO !== 'Cerrada' && ot.ESTADO !== 'Cancelado' ? `<button class="btn btn-sm btn-success" title="Cerrar OT" onclick="generarActaEntrega('${ot.ID_OT}','')"><i class="fas fa-file-signature"></i></button>` : ''}
+        </div>
+      </div>
+      <div style="padding:14px 22px">
+        <!-- Info fila -->
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
+          <div style="font-size:12px;color:var(--text-muted)"><span style="font-weight:700;color:var(--text-mid)">Servicio:</span> <span class="td-mono" style="font-size:11.5px">${ot.SERVICIO || '—'}</span></div>
+          <div style="font-size:12px;color:var(--text-muted)"><span style="font-weight:700;color:var(--text-mid)">Fecha:</span> ${fmtFecha(ot.FECHA_PROGRAMADA)}</div>
+        </div>
+        <!-- Barra de progreso -->
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px">
+            <span>Progreso</span><span style="font-weight:700;color:${colorBarra}">${cancelado ? 'Cancelado' : pct + '%'}</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${pct}%;background:${colorBarra}"></div>
+          </div>
+        </div>
+        <!-- Timeline de pasos -->
+        <div style="display:flex;align-items:flex-start;gap:0;position:relative">
+          ${steps.map((s, i) => `
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative">
+            ${i < steps.length - 1 ? `<div style="position:absolute;top:16px;left:50%;right:-50%;height:2px;background:${s.done ? colorBarra : 'var(--border)'};z-index:0"></div>` : ''}
+            <div style="width:33px;height:33px;border-radius:50%;background:${s.done ? colorBarra : 'var(--bg2)'};color:${s.done ? 'white' : 'var(--text-muted)'};display:flex;align-items:center;justify-content:center;font-size:12px;z-index:1;border:2px solid ${s.done ? colorBarra : 'var(--border)'}">
+              <i class="fas ${s.icon}"></i>
+            </div>
+            <div style="font-size:10px;font-weight:${s.done?'700':'400'};color:${s.done ? colorBarra : 'var(--text-muted)'};text-align:center;margin-top:5px;line-height:1.2">${s.label}</div>
+            ${s.id ? `<div style="font-size:9.5px;color:var(--blue);font-family:'DM Mono',monospace;margin-top:1px">${s.id}</div>` : ''}
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 window.addEventListener('DOMContentLoaded', () => {
   const savedToken = localStorage.getItem('erp_ops_token');
