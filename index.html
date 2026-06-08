@@ -1286,7 +1286,11 @@ function renderCardsOT(data) {
 function formNuevaOT(idServicio = '', clienteRef = '') {
   openModal('Nueva Orden de Trabajo', `
     <div class="form-grid">
-      <div class="f-group"><label>Servicio Asociado *</label><input id="otServicio" value="${idServicio}" placeholder="ID del servicio (ej: SRV-001)"/></div>
+      <div class="f-group"><label>Servicio Asociado *</label>
+        <select id="otServicio" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:white;transition:border-color var(--trans)">
+          <option value="">⏳ Cargando servicios...</option>
+        </select>
+      </div>
       <div class="f-group"><label>Técnico / Empleado Asignado *</label>
         <select id="otTecnico" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:white;transition:border-color var(--trans)">
           <option value="">⏳ Cargando empleados...</option>
@@ -1304,7 +1308,8 @@ function formNuevaOT(idServicio = '', clienteRef = '') {
       { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
       { label: '<i class="fas fa-bolt"></i> Crear OT', cls: 'btn-orange', action: 'guardarNuevaOT()' }
     ]);
-  // Cargar empleados activos en el select
+  // Cargar servicios y empleados en sus selects
+  _cargarServiciosEnSelect('otServicio', idServicio);
   _cargarEmpleadosEnSelect('otTecnico');
 }
 
@@ -2818,6 +2823,23 @@ async function enviarMsgAdmin() {
 // ============================================================
 // HELPER: Cargar empleados activos en un <select>
 // ============================================================
+async function _cargarServiciosEnSelect(selectId, preselect = '') {
+  const res = await callApi('SERVICIOS', 'listar', {});
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const servicios = res.ok ? res.datos.filter(s => s.ESTADO !== 'Cerrado' && s.ESTADO !== 'Cancelado') : [];
+  sel.innerHTML = '<option value="">Seleccionar servicio...</option>' +
+    servicios.map(s => {
+      const label = `${s.ID_SERVICIO} · ${s.CLIENTE || '—'}${s.TIPO_SERVICIO ? ' — ' + s.TIPO_SERVICIO : ''}`;
+      const selected = preselect && s.ID_SERVICIO === preselect ? ' selected' : '';
+      return `<option value="${s.ID_SERVICIO}"${selected}>${label}</option>`;
+    }).join('') +
+    (servicios.length === 0 ? '<option value="" disabled>Sin servicios activos</option>' : '');
+  sel.style.borderColor = '';
+  sel.onfocus = function() { this.style.borderColor = 'var(--ops-orange)'; this.style.boxShadow = '0 0 0 3px rgba(234,88,12,.1)'; };
+  sel.onblur  = function() { this.style.borderColor = ''; this.style.boxShadow = ''; };
+}
+
 async function _cargarEmpleadosEnSelect(selectId, incluirTodos = false) {
   const res = await callApi('EMPLEADOS', 'listar', {});
   const sel = document.getElementById(selectId);
