@@ -1115,10 +1115,20 @@ async function verOT(idOT) {
 
   CFG.otDetalle = ot;
 
-  // Cargar evidencias frescas desde la API (contienen la foto real ARCHIVO/URL)
+  // Cargar evidencias frescas desde la API
   const resEv = await api('EVIDENCIAS', 'listar', { idOT: idOT });
   if (resEv.ok && resEv.datos && resEv.datos.length > 0) {
-    ot = { ...ot, EVIDENCIAS: resEv.datos };
+    // Cargar la foto real (base64) de cada evidencia en paralelo
+    const evConFotos = await Promise.all(resEv.datos.map(async (e) => {
+      if (e.TIENE_FOTO && e.ID_EVIDENCIA) {
+        const resF = await api('EVIDENCIAS', 'obtener', { idEvidencia: e.ID_EVIDENCIA });
+        if (resF.ok && resF.datos && resF.datos.ARCHIVO) {
+          return { ...e, ARCHIVO: resF.datos.ARCHIVO };
+        }
+      }
+      return e;
+    }));
+    ot = { ...ot, EVIDENCIAS: evConFotos };
     CFG.otDetalle = ot;
   }
 
@@ -2016,7 +2026,14 @@ async function cargarRegistros() {
   for (const ot of misOTs.slice(0, 5)) {
     const resEv = await api('EVIDENCIAS', 'listar', { idOT: ot.ID_OT });
     if (resEv.ok && resEv.datos) {
-      resEv.datos.forEach(e => fotosOT.push({ ...e, _otId: ot.ID_OT }));
+      const evConFotos = await Promise.all(resEv.datos.map(async (e) => {
+        if (e.TIENE_FOTO && e.ID_EVIDENCIA) {
+          const resF = await api('EVIDENCIAS', 'obtener', { idEvidencia: e.ID_EVIDENCIA });
+          if (resF.ok && resF.datos && resF.datos.ARCHIVO) return { ...e, ARCHIVO: resF.datos.ARCHIVO };
+        }
+        return e;
+      }));
+      evConFotos.forEach(e => fotosOT.push({ ...e, _otId: ot.ID_OT }));
     }
   }
 
