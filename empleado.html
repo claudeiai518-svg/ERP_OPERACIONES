@@ -1615,37 +1615,69 @@ function confirmarCierreOT(idOT) {
   openSheet('⚠️ Cerrar Orden de Trabajo',
     `<div class="alert alert-warning">
        <i class="fas fa-exclamation-triangle"></i>
-       Esta acción cerrará la OT definitivamente. Asegúrate de haber registrado todas las actividades y la firma del cliente.
+       Esta acción cerrará la OT definitivamente y generará el acta de entrega.
+     </div>
+     <div class="f-group">
+       <label>Nombre del Cliente *</label>
+       <input id="shCierreCliente" type="text" placeholder="Nombre de quien recibe el servicio"/>
+     </div>
+     <div class="f-group">
+       <label>Recibido por / Firma</label>
+       <input id="shCierreFirma" type="text" placeholder="Nombre de quien firma (opcional)"/>
      </div>
      <div class="f-group">
        <label>Observaciones de cierre</label>
-       <textarea id="shCierreObs" placeholder="Resumen del trabajo realizado..." style="min-height:100px"></textarea>
+       <textarea id="shCierreObs" placeholder="Resumen del trabajo realizado..." style="min-height:80px"></textarea>
      </div>`,
     `<button class="btn btn-secondary btn-full" onclick="closeSheet()">Cancelar</button>
      <button class="btn btn-danger btn-full" onclick="ejecutarCierreOT('${idOT}')">
-       <i class="fas fa-flag-checkered"></i> Confirmar Cierre
+       <i class="fas fa-flag-checkered"></i> Confirmar Cierre y Generar Acta
      </button>`);
 }
 
 async function ejecutarCierreOT(idOT) {
-  const obs = document.getElementById('shCierreObs').value.trim();
+  const cliente = document.getElementById('shCierreCliente')?.value.trim();
+  const firma   = document.getElementById('shCierreFirma')?.value.trim();
+  const obs     = document.getElementById('shCierreObs')?.value.trim();
+
+  if (!cliente) { toast('El nombre del cliente es requerido.', 'error'); return; }
+
   const btn = event.target;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cerrando...';
   btn.disabled = true;
 
-  const res = await api('ORDENES_TRABAJO', 'cambiarEstado', { idOT: idOT, estado: 'Cerrada', observaciones: obs });
+  // 1. Cambiar estado de la OT a Cerrada
+  const resCierre = await api('ORDENES_TRABAJO', 'cambiarEstado', {
+    idOT, estado: 'Cerrada', observaciones: obs
+  });
 
-  if (res.ok) {
-    toast('OT cerrada exitosamente. Se generó el acta de entrega.', 'success');
-    closeSheet();
-    cacheClear();
-    navegarA('ots');
-    cargarMisOTs();
-  } else {
-    toast(res.mensaje || 'Error al cerrar OT', 'error');
-    btn.innerHTML = '<i class="fas fa-flag-checkered"></i> Confirmar Cierre';
+  if (!resCierre.ok) {
+    toast(resCierre.mensaje || 'Error al cerrar OT', 'error');
+    btn.innerHTML = '<i class="fas fa-flag-checkered"></i> Confirmar Cierre y Generar Acta';
     btn.disabled = false;
+    return;
   }
+
+  // 2. Generar acta de entrega
+  const resActa = await apiPost('ACTAS', 'crear', {
+    OT: idOT,
+    CLIENTE: cliente,
+    FIRMA: firma || '—',
+    FIRMA_IMAGEN: CFG.otDetalle?.FIRMA_CLIENTE || '',
+    OBSERVACIONES: obs || '',
+  });
+
+  if (resActa.ok) {
+    toast(`✅ OT cerrada. Acta ${resActa.datos?.id || ''} generada.`, 'success');
+  } else {
+    // OT ya cerrada, pero el acta falló — avisar sin bloquear
+    toast('OT cerrada, pero hubo un problema al generar el acta: ' + resActa.mensaje, 'warning');
+  }
+
+  closeSheet();
+  cacheClear();
+  navegarA('ots');
+  cargarMisOTs();
 }
 
 // ============================================================

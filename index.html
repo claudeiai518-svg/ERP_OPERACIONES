@@ -671,6 +671,22 @@ async function api(modulo, accion, datos = {}) {
   });
 }
 
+// API POST (para payloads grandes como base64, actas con firma, etc.)
+async function apiPost(modulo, accion, datos = {}) {
+  try {
+    const payload = { modulo, accion, datos, token: APP.token };
+    const res = await fetch(APP.SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      redirect: 'follow',
+    });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, mensaje: 'Error POST: ' + e.message };
+  }
+}
+
 async function callApi(m, a, d = {}) {
   if (!NO_CACHE.has(a)) {
     const cached = Cache.get(m, a, d);
@@ -1322,12 +1338,7 @@ async function verDetalleOT(idOT) {
       </div>
       <div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Firma Cliente</div>
-        ${ot.FIRMA_CLIENTE
-          ? `<div style="border:2px solid var(--success);border-radius:8px;overflow:hidden;background:white;max-width:220px;margin-top:4px">
-               <img src="${ot.FIRMA_CLIENTE}" style="width:100%;max-height:90px;object-fit:contain;display:block;padding:4px"
-                 onerror="this.parentElement.innerHTML='<span style=\\'font-size:12px;color:var(--success);padding:6px;display:block\\'>✅ Firma registrada</span>'"/>
-             </div>`
-          : `<div style="font-size:13px;color:var(--text-muted)">—</div>`}
+        <div style="font-size:13px">${ot.FIRMA_CLIENTE || '—'}</div>
       </div>
     </div>
 
@@ -1366,27 +1377,15 @@ async function verDetalleOT(idOT) {
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px"><i class="fas fa-camera" style="color:var(--success);margin-right:6px"></i>Evidencias (${evidencias.length})</div>
       ${evidencias.length === 0
         ? '<p style="font-size:13px;color:var(--text-muted)">Sin evidencias.</p>'
-        : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:10px">
-            ${evidencias.map(e => {
-              const src = e.ARCHIVO || e.URL_FOTO || e.FOTO || '';
-              return `
-              <div style="background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border)">
-                ${src
-                  ? `<div style="width:100%;height:120px;overflow:hidden;background:#000;cursor:pointer" onclick="window.open('${src}','_blank')" title="Ver imagen completa">
-                       <img src="${src}" style="width:100%;height:100%;object-fit:cover;display:block;transition:.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"
-                         onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;color:#aaa\\'><i class=\\'fas fa-image\\' style=\\'font-size:28px\\'></i></div>'"/>
-                     </div>`
-                  : `<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fas fa-image" style="font-size:28px"></i></div>`}
-                <div style="padding:7px 10px">
-                  <div style="font-size:11px;font-weight:700;color:var(--navy)">${e.TIPO || '—'}</div>
-                  <div style="font-size:11px;color:var(--text-muted)">${fmtFecha(e.FECHA)}</div>
-                  <div style="font-size:11px;color:var(--text-muted)">${(e.OBSERVACIONES||'').substring(0,45)}</div>
-                  ${e.GPS_LINK ? `<a href="${e.GPS_LINK}" target="_blank" style="font-size:11px;color:var(--ops-orange);font-weight:600"><i class="fas fa-map-marker-alt"></i> Ver mapa</a>` : ''}
-                </div>
-              </div>`;
-            }).join('')}
+        : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            ${evidencias.map(e => `
+              <div style="background:var(--bg);border-radius:8px;padding:8px 10px;font-size:12.5px">
+                <div style="font-weight:600">${e.TIPO}</div>
+                <div style="color:var(--text-muted)">${fmtFecha(e.FECHA)}</div>
+                <div style="color:var(--text-muted)">${e.OBSERVACIONES||''}</div>
+              </div>`).join('')}
           </div>`}
-      <button class="btn btn-sm btn-secondary" style="margin-top:4px" onclick="formRegistrarEvidencia('${idOT}')">
+      <button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="formRegistrarEvidencia('${idOT}')">
         <i class="fas fa-camera"></i> Agregar evidencia
       </button>
     </div>`;
@@ -1513,8 +1512,9 @@ async function generarActaEntrega(idOT, cliente) {
   openModal('Generar Acta de Entrega', `
     <p style="margin-bottom:14px;color:var(--text-mid)">Esto cerrará la OT <strong>${idOT}</strong> y generará el acta de entrega.</p>
     <div class="form-grid">
-      <div class="f-group"><label>Cliente *</label><input id="actaCliente" value="${cliente}" placeholder="Nombre del cliente"/></div>
+      <div class="f-group"><label>Cliente *</label><input id="actaCliente" value="${cliente || ''}" placeholder="Nombre del cliente"/></div>
       <div class="f-group"><label>Firma / Recibido por</label><input id="actaFirma" placeholder="Nombre de quien recibe"/></div>
+      <div class="f-group" style="grid-column:1/-1"><label>Observaciones</label><textarea id="actaObs" placeholder="Resumen del servicio prestado..." style="min-height:70px"></textarea></div>
     </div>`,
     [
       { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
@@ -1523,11 +1523,44 @@ async function generarActaEntrega(idOT, cliente) {
 }
 
 async function confirmarActa(idOT) {
-  const datos = { OT: idOT, CLIENTE: v('actaCliente'), FIRMA: v('actaFirma') };
-  if (!datos.CLIENTE) { toast('El cliente es requerido.', 'warning'); return; }
-  const res = await callApi('ACTAS', 'crear', datos);
-  if (res.ok) { toast(res.mensaje, 'success'); closeModal(); ordenes(); }
-  else toast(res.mensaje, 'error');
+  const cliente = v('actaCliente');
+  const firma   = v('actaFirma');
+  const obs     = v('actaObs');
+  if (!cliente) { toast('El cliente es requerido.', 'warning'); return; }
+
+  // Deshabilitar botón
+  const btn = document.querySelector('.modal-footer .btn-success');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...'; }
+
+  // 1. Cerrar la OT
+  const resCierre = await apiPost('ORDENES_TRABAJO', 'cambiarEstado', {
+    idOT, estado: 'Cerrada', observaciones: obs
+  });
+  if (!resCierre.ok) {
+    toast('Error al cerrar OT: ' + (resCierre.mensaje || 'Error desconocido'), 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-signature"></i> Generar Acta y Cerrar OT'; }
+    return;
+  }
+
+  // 2. Crear el acta (POST para evitar límite de URL)
+  const resActa = await apiPost('ACTAS', 'crear', {
+    OT: idOT,
+    CLIENTE: cliente,
+    FIRMA: firma || '—',
+    OBSERVACIONES: obs || '',
+  });
+
+  if (resActa.ok) {
+    toast(`✅ Acta ${resActa.datos?.ID_ACTA || ''} generada correctamente.`, 'success');
+    closeModal();
+    Cache.invalidate('ACTAS');
+    Cache.invalidate('ORDENES_TRABAJO');
+    actas(); // Navegar a la vista de actas
+  } else {
+    toast('OT cerrada pero error al generar acta: ' + (resActa.mensaje || 'Error desconocido'), 'warning');
+    closeModal();
+    ordenes();
+  }
 }
 
 // ============================================================
@@ -1788,7 +1821,9 @@ async function confirmarEditCuadrilla(id) {
 // VISTA: ACTAS DE ENTREGA
 // ============================================================
 async function actas() {
-  const res = await callApi('ACTAS', 'listar', {});
+  mainContent(`<div class="card"><div class="card-body">${skeletonTable(['ID Acta','OT','Fecha','Cliente','Firma',''])}</div></div>`);
+  Cache.invalidate('ACTAS');
+  const res = await api('ACTAS', 'listar', {});
   const lista = res.ok ? res.datos : [];
 
   mainContent(`
@@ -1802,24 +1837,45 @@ async function actas() {
           <input type="text" placeholder="Buscar acta, OT, cliente..." oninput="filtrarTabla(this,'tblActas')"/>
         </div>
       </div>
+      ${!res.ok ? `<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Error al cargar actas: ${res.mensaje}</div>` : ''}
       <div class="table-wrap">
         <table id="tblActas">
-          <thead><tr><th>ID Acta</th><th>OT</th><th>Fecha</th><th>Cliente</th><th>Firma</th></tr></thead>
+          <thead><tr><th>ID Acta</th><th>OT</th><th>Fecha</th><th>Cliente</th><th>Firma</th><th></th></tr></thead>
           <tbody>
             ${lista.length === 0
-              ? `<tr><td colspan="5"><div class="empty-state"><i class="fas fa-file-signature"></i><h4>Sin actas</h4><p>Las actas se generan al cerrar una OT.</p></div></td></tr>`
+              ? `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-file-signature"></i><h4>Sin actas</h4><p>Las actas se generan al cerrar una OT.</p></div></td></tr>`
               : lista.map(a => `<tr>
                 <td class="td-mono">${a.ID_ACTA}</td>
                 <td class="td-mono">${a.OT || '—'}</td>
                 <td>${fmtFecha(a.FECHA)}</td>
                 <td style="font-weight:600">${a.CLIENTE || '—'}</td>
                 <td>${a.FIRMA ? `<span class="pill pill-success"><i class="fas fa-check"></i> ${a.FIRMA}</span>` : '—'}</td>
+                <td><button class="btn btn-sm btn-secondary" onclick='verDetalleActa(${JSON.stringify(a)})'><i class="fas fa-eye"></i> Ver</button></td>
               </tr>`).join('')}
           </tbody>
         </table>
       </div>
     </div>
   </div>`);
+}
+
+function verDetalleActa(a) {
+  openModal(`Acta ${a.ID_ACTA}`, `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div><div class="detail-lbl">ID Acta</div><div class="td-mono" style="font-size:14px">${a.ID_ACTA}</div></div>
+      <div><div class="detail-lbl">OT</div><div class="td-mono" style="font-size:14px">${a.OT || '—'}</div></div>
+      <div><div class="detail-lbl">Fecha</div><div>${fmtFecha(a.FECHA)}</div></div>
+      <div><div class="detail-lbl">Cliente</div><div style="font-weight:600">${a.CLIENTE || '—'}</div></div>
+      <div style="grid-column:1/-1"><div class="detail-lbl">Recibido por / Firma</div><div>${a.FIRMA || '—'}</div></div>
+      ${a.OBSERVACIONES ? `<div style="grid-column:1/-1"><div class="detail-lbl">Observaciones</div><div style="font-size:13px;color:var(--text-mid)">${a.OBSERVACIONES}</div></div>` : ''}
+    </div>
+    ${a.FIRMA_IMAGEN
+      ? `<div class="detail-lbl" style="margin-bottom:6px">Firma del cliente</div>
+         <div style="border:2px solid var(--success);border-radius:8px;overflow:hidden;background:white;max-width:100%">
+           <img src="${a.FIRMA_IMAGEN}" style="width:100%;max-height:140px;object-fit:contain;padding:8px;display:block"/>
+         </div>`
+      : ''}`,
+    [{ label: 'Cerrar', cls: 'btn-secondary', action: 'closeModal()' }]);
 }
 
 // ============================================================
