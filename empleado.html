@@ -725,6 +725,23 @@ function api(modulo, accion, datos = {}) {
   });
 }
 
+// API POST — para payloads grandes (fotos base64, firmas)
+// Usa fetch() en vez de JSONP para evitar límite de URL
+async function apiPost(modulo, accion, datos = {}) {
+  try {
+    const body = JSON.stringify({ modulo, accion, datos, token: CFG.token });
+    const resp = await fetch(CFG.SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body,
+    });
+    if (!resp.ok) return { ok: false, mensaje: 'Error HTTP ' + resp.status };
+    return await resp.json();
+  } catch (err) {
+    return { ok: false, mensaje: 'Error de conexión: ' + err.message };
+  }
+}
+
 // ============================================================
 // AUTH
 // ============================================================
@@ -1412,7 +1429,7 @@ async function guardarFirma(idOT) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
   btn.disabled = true;
 
-  const res = await api('ORDENES_TRABAJO', 'actualizar', { ID_OT: idOT, FIRMA_CLIENTE: firmaB64 });
+  const res = await apiPost('ORDENES_TRABAJO', 'actualizar', { ID_OT: idOT, FIRMA_CLIENTE: firmaB64 });
 
   if (res.ok) {
     toast('Firma del cliente registrada', 'success');
@@ -1530,7 +1547,7 @@ function sheetFotoPresencia(idOT) {
        </button>
      </div>
      <div id="fotoGPSInfo" style="font-size:12px;color:var(--text-muted)">
-       <i class="fas fa-map-marker-alt"></i> Obteniendo ubicación GPS...
+       <i class="fas fa-map-marker-alt"></i> El GPS se capturará automáticamente al tomar la foto.
      </div>
      <div class="f-group" style="margin-top:12px">
        <label>Observaciones (opcional)</label>
@@ -1543,8 +1560,7 @@ function sheetFotoPresencia(idOT) {
 
   // Iniciar cámara
   iniciarCamara();
-  // Obtener GPS
-  obtenerGPSFoto();
+  // GPS se captura automáticamente al tomar la foto
 }
 
 let _fotoGPS = null;
@@ -1581,6 +1597,26 @@ function capturarFoto() {
   canvas.height = video.videoHeight || 480;
   ctx.drawImage(video, 0, 0);
 
+  // Obtener GPS en el momento exacto de captura de la foto
+  _fotoGPS = null;
+  const infoEl = document.getElementById('fotoGPSInfo');
+  if (infoEl) infoEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--warning)"></i> Obteniendo ubicación GPS...';
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        _fotoGPS = { lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6), acc: Math.round(pos.coords.accuracy) };
+        if (infoEl) infoEl.innerHTML = `<i class="fas fa-map-marker-alt" style="color:var(--success)"></i> <strong>GPS capturado:</strong> ${_fotoGPS.lat}, ${_fotoGPS.lng} (±${_fotoGPS.acc}m)`;
+      },
+      (err) => {
+        if (infoEl) infoEl.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i> GPS no obtenido (${err.message}). La foto se enviará sin ubicación.`;
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  } else {
+    if (infoEl) infoEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i> GPS no disponible en este dispositivo.';
+  }
+
   // Añadir watermark de fecha/hora
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(0, canvas.height - 36, canvas.width, 36);
@@ -1598,8 +1634,9 @@ function capturarFoto() {
     <button class="btn btn-secondary btn-full" onclick="repetirFoto()"><i class="fas fa-redo"></i> Repetir</button>`;
 
   if (btnEnviar) btnEnviar.disabled = false;
-  toast('Foto capturada. Puedes enviarla.', 'success');
+  toast('Foto capturada. Obteniendo GPS...', 'success');
 }
+
 
 function repetirFoto() {
   _fotoCapturada = null;
@@ -1654,7 +1691,7 @@ async function enviarFotoPresencia(idOT) {
     GPS_LINK: _fotoGPS ? `https://maps.google.com/?q=${_fotoGPS.lat},${_fotoGPS.lng}` : '',
   };
 
-  const res = await api('EVIDENCIAS', 'registrar', datos);
+  const res = await apiPost('EVIDENCIAS', 'registrar', datos);
   if (_fotoStream) { _fotoStream.getTracks().forEach(t => t.stop()); _fotoStream = null; }
 
   if (res.ok) {

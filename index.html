@@ -549,6 +549,9 @@ select.filter-sel:focus { border-color: var(--ops-orange); outline: none; }
         <div class="nav-item" data-view="gps" onclick="navigate('gps')">
           <i class="fas fa-map-marked-alt"></i> Registro GPS
         </div>
+        <div class="nav-item" data-view="monitor" onclick="navigate('monitor')">
+          <i class="fas fa-satellite-dish"></i> Monitor en Vivo
+        </div>
       </div>
       <div class="nav-section">
         <div class="nav-section-label">Sistema</div>
@@ -769,7 +772,7 @@ const VIEW_TITLES = {
   programacion: 'Programación de Personal', cuadrillas: 'Cuadrillas',
   actas: 'Actas de Entrega', sistema: 'Administración del Sistema',
   empleados: 'Gestión de Empleados', competencias: 'Catálogo de Competencias',
-  gps: 'Registro GPS',
+  gps: 'Registro GPS', monitor: '🛰️ Monitor en Vivo',
 };
 
 function navigate(view) {
@@ -778,7 +781,7 @@ function navigate(view) {
   const active = document.querySelector(`[data-view="${view}"]`);
   if (active) active.classList.add('active');
   document.getElementById('topbarTitle').textContent = VIEW_TITLES[view] || view;
-  const views = { dashboard, servicios, ordenes, visitas, programacion, cuadrillas, actas, sistema, empleados, competencias, gps };
+  const views = { dashboard, servicios, ordenes, visitas, programacion, cuadrillas, actas, sistema, empleados, competencias, gps, monitor };
   if (views[view]) views[view]();
   else mainContent(`<div class="empty-state"><i class="fas fa-wrench"></i><h4>Próximamente</h4><p>Esta sección está en desarrollo.</p></div>`);
 }
@@ -2334,6 +2337,216 @@ async function gps() {
       </div>
     </div>
   </div>`);
+}
+
+
+// ============================================================
+// VISTA: MONITOR EN VIVO — Dónde están y qué hacen los técnicos
+// ============================================================
+let _monitorTimer = null;
+
+async function monitor() {
+  mainContent(`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <h2 style="font-size:18px;font-weight:800;color:var(--navy);margin:0">
+          <i class="fas fa-satellite-dish" style="color:var(--ops-orange);margin-right:8px"></i>Monitor en Vivo
+        </h2>
+        <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">
+          Actualización automática cada 60 segundos · <span id="monitorUltAct">Cargando...</span>
+        </p>
+      </div>
+      <button class="btn btn-secondary" onclick="monitorRefresh()" style="gap:6px">
+        <i class="fas fa-sync-alt" id="monitorSyncIcon"></i> Actualizar
+      </button>
+    </div>
+    <div id="monitorContent">
+      <div class="empty-state"><i class="fas fa-spinner fa-spin"></i><h4>Cargando datos...</h4></div>
+    </div>
+  `);
+
+  if (_monitorTimer) clearInterval(_monitorTimer);
+  await _monitorCargar();
+  _monitorTimer = setInterval(_monitorCargar, 60000);
+
+  // Detener timer al salir de esta vista
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => { if (_monitorTimer) { clearInterval(_monitorTimer); _monitorTimer = null; } }, { once: true });
+  });
+}
+
+async function monitorRefresh() {
+  const icon = document.getElementById('monitorSyncIcon');
+  if (icon) { icon.style.animation = 'spin .7s linear infinite'; setTimeout(() => icon.style.animation = '', 700); }
+  await _monitorCargar();
+}
+
+async function _monitorCargar() {
+  const [resEmps, resOTs, resGPS] = await Promise.all([
+    callApi('EMPLEADOS', 'listar', {}),
+    callApi('ORDENES_TRABAJO', 'listar', {}),
+    callApi('GPS', 'listar', {}),
+  ]);
+
+  const ahora = new Date();
+  const ultActEl = document.getElementById('monitorUltAct');
+  if (ultActEl) ultActEl.textContent = `Última actualización: ${ahora.toLocaleTimeString('es-CO')}`;
+
+  const cont = document.getElementById('monitorContent');
+  if (!cont) return;
+
+  const empleados = resEmps.ok ? resEmps.datos : [];
+  const ots = resOTs.ok ? resOTs.datos : [];
+  const gpsRegistros = resGPS.ok ? resGPS.datos : [];
+
+  // Agrupar por empleado: última ubicación GPS y OT activa
+  const hoy = ahora.toDateString();
+  const ultimoGPS = {};
+  gpsRegistros.forEach(g => {
+    const emp = g.EMPLEADO;
+    if (!emp) return;
+    const existente = ultimoGPS[emp];
+    if (!existente || new Date(g.FECHA) > new Date(existente.FECHA)) {
+      ultimoGPS[emp] = g;
+    }
+  });
+
+  const otActiva = {};
+  ots.forEach(ot => {
+    if (!['Cerrada','Cancelada'].includes(ot.ESTADO)) {
+      const t = ot.TECNICO;
+      if (!otActiva[t] || new Date(ot.FECHA_PROGRAMADA) > new Date(otActiva[t].FECHA_PROGRAMADA)) {
+        otActiva[t] = ot;
+      }
+    }
+  });
+
+  // Calcular "visto hace" en minutos
+  function vistohace(fechaStr) {
+    if (!fechaStr) return null;
+    const mins = Math.floor((ahora - new Date(fechaStr)) / 60000);
+    if (mins < 1) return 'ahora mismo';
+    if (mins < 60) return `hace ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    return `hace ${hrs}h ${mins % 60}min`;
+  }
+
+  function estadoColor(mins) {
+    if (mins === null) return '#94a3b8';
+    if (mins <= 30) return 'var(--success)';
+    if (mins <= 120) return 'var(--warning)';
+    return '#ef4444';
+  }
+
+  function otEstadoPill(estado) {
+    const mapa = { 'En Proceso':'pill-warning', 'Pendiente':'pill-navy', 'Completada':'pill-success', 'En Espera':'pill-info' };
+    return `<span class="pill ${mapa[estado]||'pill-navy'}">${estado}</span>`;
+  }
+
+  // Stats rápidos
+  const conGPSHoy = Object.values(ultimoGPS).filter(g => new Date(g.FECHA).toDateString() === hoy).length;
+  const sinActividad = empleados.filter(e => {
+    const g = ultimoGPS[e.NOMBRE];
+    if (!g) return true;
+    return (ahora - new Date(g.FECHA)) > 2 * 60 * 60 * 1000;
+  }).length;
+
+  cont.innerHTML = `
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px">
+      <div class="stat-card" style="padding:14px 16px">
+        <div class="stat-icon navy" style="width:38px;height:38px;font-size:15px"><i class="fas fa-users"></i></div>
+        <div class="stat-info"><div class="stat-value" style="font-size:22px">${empleados.length}</div><div class="stat-label">Técnicos totales</div></div>
+      </div>
+      <div class="stat-card" style="padding:14px 16px">
+        <div class="stat-icon success" style="width:38px;height:38px;font-size:15px"><i class="fas fa-map-marker-alt"></i></div>
+        <div class="stat-info"><div class="stat-value" style="font-size:22px">${conGPSHoy}</div><div class="stat-label">Con GPS hoy</div></div>
+      </div>
+      <div class="stat-card" style="padding:14px 16px">
+        <div class="stat-icon orange" style="width:38px;height:38px;font-size:15px"><i class="fas fa-tools"></i></div>
+        <div class="stat-info"><div class="stat-value" style="font-size:22px">${Object.keys(otActiva).length}</div><div class="stat-label">En OT activa</div></div>
+      </div>
+      <div class="stat-card" style="padding:14px 16px">
+        <div class="stat-icon" style="width:38px;height:38px;font-size:15px;background:rgba(239,68,68,.1);color:#ef4444"><i class="fas fa-user-clock"></i></div>
+        <div class="stat-info"><div class="stat-value" style="font-size:22px">${sinActividad}</div><div class="stat-label">Sin actividad (+2h)</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-broadcast-tower" style="color:var(--ops-orange);margin-right:8px"></i>Estado de Técnicos</h3>
+        <input type="text" class="filter-sel" placeholder="Filtrar técnico..." style="padding:7px 12px" oninput="filtrarMonitor(this.value)"/>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div id="monitorCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:16px">
+          ${empleados.length === 0
+            ? `<div class="empty-state"><i class="fas fa-users-slash"></i><h4>Sin empleados registrados</h4></div>`
+            : empleados.map(emp => {
+                const gps = ultimoGPS[emp.NOMBRE];
+                const ot = otActiva[emp.NOMBRE];
+                const mins = gps ? Math.floor((ahora - new Date(gps.FECHA)) / 60000) : null;
+                const color = estadoColor(mins);
+                const visto = vistohace(gps?.FECHA);
+                const activo = mins !== null && mins <= 120;
+
+                return `<div class="monitor-card" data-emp="${(emp.NOMBRE||'').toLowerCase()}" style="background:white;border:1.5px solid ${activo ? color : 'var(--border)'};border-radius:14px;padding:16px;position:relative;overflow:hidden">
+                  <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${color}"></div>
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                    <div style="width:44px;height:44px;border-radius:50%;background:${color};color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0">
+                      ${(emp.NOMBRE||'?').charAt(0).toUpperCase()}
+                    </div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-weight:700;font-size:14px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${emp.NOMBRE||'—'}</div>
+                      <div style="font-size:11px;color:var(--text-muted)">${emp.CARGO||'Sin cargo'}</div>
+                    </div>
+                    <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0" title="${activo?'Activo':'Sin actividad reciente'}"></div>
+                  </div>
+
+                  ${gps ? `
+                  <div style="background:var(--bg);border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:12px">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                      <i class="fas fa-clock" style="color:${color};width:12px"></i>
+                      <span style="color:var(--text-muted)">Última señal:</span>
+                      <strong style="color:${color}">${visto}</strong>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                      <i class="fas fa-tag" style="color:var(--ops-orange);width:12px"></i>
+                      <span style="color:var(--text-muted)">Tipo:</span>
+                      <span>${gps.TIPO === 'FOTO_PRESENCIA' ? '📷 Foto presencia' : gps.TIPO === 'GPS_MANUAL' ? '📍 GPS manual' : gps.TIPO||'—'}</span>
+                    </div>
+                    ${gps.LINK_MAPA ? `
+                    <a href="${gps.LINK_MAPA}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ops-orange);font-weight:600;text-decoration:none;margin-top:2px">
+                      <i class="fas fa-map-marker-alt"></i> Ver en Google Maps
+                    </a>` : `<span style="color:var(--text-muted);font-size:11px"><i class="fas fa-map-marker-alt"></i> Sin coordenadas</span>`}
+                  </div>` : `
+                  <div style="background:var(--bg);border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:12px;color:var(--text-muted);text-align:center">
+                    <i class="fas fa-wifi-slash"></i> Sin registro GPS hoy
+                  </div>`}
+
+                  ${ot ? `
+                  <div style="border:1px solid rgba(234,88,12,.2);border-radius:8px;padding:9px 11px;font-size:12px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                      <span style="font-weight:700;color:var(--navy)">${ot.ID_OT}</span>
+                      ${otEstadoPill(ot.ESTADO)}
+                    </div>
+                    <div style="color:var(--text-muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${ot.SERVICIO||''}">${ot.SERVICIO||'Sin descripción'}</div>
+                    ${ot.OBSERVACIONES ? `<div style="color:var(--text-muted);font-size:11px;margin-top:3px;font-style:italic">"${ot.OBSERVACIONES.substring(0,60)}${ot.OBSERVACIONES.length>60?'...':''}"</div>` : ''}
+                  </div>` : `
+                  <div style="border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--text-muted);text-align:center">
+                    <i class="fas fa-clipboard-check"></i> Sin OT activa asignada
+                  </div>`}
+                </div>`;
+              }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function filtrarMonitor(q) {
+  const val = (q || '').toLowerCase();
+  document.querySelectorAll('.monitor-card').forEach(el => {
+    el.style.display = el.dataset.emp.includes(val) ? '' : 'none';
+  });
 }
 
 
