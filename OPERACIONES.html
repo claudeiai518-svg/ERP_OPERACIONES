@@ -1892,6 +1892,8 @@ function _renderProgramacion() {
             <i class="fas fa-calendar-alt"></i> Mes
           </button>
         </div>
+        <button class="btn btn-secondary btn-sm" onclick="formProgramarMasivo('semana')" style="border-color:var(--blue);color:var(--blue)"><i class="fas fa-calendar-week"></i> Prog. Semana</button>
+        <button class="btn btn-secondary btn-sm" onclick="formProgramarMasivo('mes')" style="border-color:var(--success);color:var(--success)"><i class="fas fa-calendar-alt"></i> Prog. Mes</button>
         <button class="btn btn-orange" onclick="formNuevaProgramacion()"><i class="fas fa-plus"></i> Programar</button>
       </div>
     </div>
@@ -2087,6 +2089,191 @@ function seleccionarTurno(inicio, fin, inicioId, finId, btn) {
   if (fin)    { const el = document.getElementById(finId);    if(el) el.value = fin; }
   document.querySelectorAll('.turno-activo').forEach(b => b.classList.remove('turno-activo'));
   btn.classList.add('turno-activo');
+}
+
+// ============================================================
+// FESTIVOS COLOMBIA (Ley 51/1983 y Ley 270/1996)
+// ============================================================
+function getFestivosColombia(año) {
+  // Calcular Pascua (algoritmo de Butcher/Meeus)
+  function pascua(y) {
+    const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;
+    return new Date(y,mes-1,dia);
+  }
+  function nextLunes(d) {
+    const dia = new Date(d); const dow = dia.getDay();
+    if (dow === 1) return dia;
+    const diff = dow === 0 ? 1 : 8 - dow;
+    dia.setDate(dia.getDate() + diff); return dia;
+  }
+  function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+  function iso(d) { return d.toISOString().split('T')[0]; }
+
+  const p = pascua(año);
+  const festivos = new Set();
+
+  // Fijos
+  [[1,1],[5,1],[7,20],[8,7],[12,8],[12,25]].forEach(([m,d]) => festivos.add(iso(new Date(año,m-1,d))));
+
+  // Emiliani (traslado al siguiente lunes)
+  [[1,6],[3,19],[6,29],[8,15],[10,12],[11,1],[11,11]].forEach(([m,d]) => festivos.add(iso(nextLunes(new Date(año,m-1,d)))));
+
+  // Relativos a Pascua
+  festivos.add(iso(addDays(p,-3)));  // Jueves Santo
+  festivos.add(iso(addDays(p,-2)));  // Viernes Santo
+  festivos.add(iso(addDays(p,39)));  // Ascensión → lunes
+  festivos.add(iso(addDays(p,60)));  // Corpus Christi → lunes
+  festivos.add(iso(addDays(p,68)));  // Sagrado Corazón → lunes
+
+  return festivos;
+}
+
+function esFestivoColombia(fecha) {
+  const d = typeof fecha === 'string' ? new Date(fecha+'T12:00:00') : fecha;
+  const año = d.getFullYear();
+  const iso = d.toISOString().split('T')[0];
+  return getFestivosColombia(año).has(iso);
+}
+
+// ============================================================
+// PROGRAMACIÓN MASIVA (SEMANA / MES)
+// ============================================================
+function formProgramarMasivo(modo) {
+  const hoy = new Date().toISOString().split('T')[0];
+  // Calcular rango por defecto
+  let fechaIni, fechaFin;
+  if (modo === 'semana') {
+    const d = new Date(); const dow = d.getDay() || 7;
+    const lun = new Date(d); lun.setDate(d.getDate()-dow+1); lun.setHours(0,0,0,0);
+    const dom = new Date(lun); dom.setDate(lun.getDate()+6);
+    fechaIni = lun.toISOString().split('T')[0];
+    fechaFin = dom.toISOString().split('T')[0];
+  } else {
+    const d = new Date();
+    fechaIni = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    fechaFin = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().split('T')[0];
+  }
+
+  openModal(`Programar ${modo === 'semana' ? 'Semana' : 'Mes'} Completo`, `
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
+      Asigna el mismo turno a un empleado por ${modo === 'semana' ? 'todos los días de la semana' : 'todos los días del mes'}.
+      Los festivos colombianos se marcan automáticamente y puedes excluirlos.
+    </p>
+    <div class="form-grid">
+      <div class="f-group"><label>Empleado *</label>
+        <select id="masEmp" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:white">
+          <option value="">⏳ Cargando empleados...</option>
+        </select>
+      </div>
+      <div class="f-group"><label>Fecha inicio *</label>
+        <input id="masIni" type="date" value="${fechaIni}" onchange="actualizarResumenMasivo()"/>
+      </div>
+      <div class="f-group"><label>Fecha fin *</label>
+        <input id="masFin" type="date" value="${fechaFin}" onchange="actualizarResumenMasivo()"/>
+      </div>
+      <div class="f-group full">
+        <label>Días a incluir</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+          ${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((d,i) => `
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12.5px;font-weight:600;color:var(--navy)">
+              <input type="checkbox" id="masDia${i}" value="${i}" ${i<5?'checked':''} onchange="actualizarResumenMasivo()" style="accent-color:var(--ops-orange)"> ${d}
+            </label>`).join('')}
+        </div>
+      </div>
+      <div class="f-group" style="grid-column:1/-1">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="masExcFestivos" checked onchange="actualizarResumenMasivo()" style="accent-color:var(--ops-orange)">
+          <span style="font-size:13px;font-weight:600">Excluir festivos colombianos</span>
+          <span class="pill pill-warning" style="font-size:10px">Recomendado</span>
+        </label>
+      </div>
+      ${_turnosHtml('masInicio','masFin2')}
+      <div class="f-group"><label>Hora Inicio *</label><input id="masInicio" type="time" value="06:00"/></div>
+      <div class="f-group"><label>Hora Fin *</label><input id="masFin2" type="time" value="14:00"/></div>
+      <div class="f-group full"><label>OT Asignada (opcional)</label><input id="masOT" placeholder="Ej: OT-001"/></div>
+    </div>
+    <div id="masResumen" style="margin-top:14px;background:var(--bg);border-radius:8px;padding:12px;font-size:12.5px;color:var(--text-mid)">
+      <i class="fas fa-spinner fa-spin" style="color:var(--ops-orange)"></i> Calculando días...
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: `<i class="fas fa-calendar-plus"></i> Programar ${modo==='semana'?'Semana':'Mes'}`, cls: 'btn-orange', action: `guardarProgramacionMasiva()` }
+    ]);
+  _cargarEmpleadosEnSelect('masEmp');
+  setTimeout(actualizarResumenMasivo, 400);
+}
+
+function _getDiasMasivo() {
+  const ini = document.getElementById('masIni')?.value;
+  const finVal = document.getElementById('masFin')?.value;
+  if (!ini || !finVal) return [];
+  const diasSel = [0,1,2,3,4,5,6].filter(i => document.getElementById('masDia'+i)?.checked);
+  const excFest = document.getElementById('masExcFestivos')?.checked;
+
+  const dias = [];
+  const cur = new Date(ini+'T12:00:00');
+  const end = new Date(finVal+'T12:00:00');
+  while (cur <= end) {
+    // getDay(): 0=dom,1=lun..6=sab → convertir a 0=lun..6=dom
+    const dow = (cur.getDay() + 6) % 7;
+    const iso = cur.toISOString().split('T')[0];
+    const festivo = esFestivoColombia(cur);
+    if (diasSel.includes(dow) && !(excFest && festivo)) {
+      dias.push({ iso, festivo });
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return dias;
+}
+
+function actualizarResumenMasivo() {
+  const el = document.getElementById('masResumen');
+  if (!el) return;
+  const dias = _getDiasMasivo();
+  if (!dias.length) {
+    el.innerHTML = '<span style="color:var(--warning)"><i class="fas fa-exclamation-triangle"></i> Sin días seleccionados en ese rango.</span>';
+    return;
+  }
+  const festivos = dias.filter(d => d.festivo).length;
+  const normales = dias.length - festivos;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span><i class="fas fa-calendar-check" style="color:var(--success)"></i> <strong>${dias.length}</strong> turnos a crear</span>
+      <span style="color:var(--text-muted)">·</span>
+      <span><i class="fas fa-sun" style="color:var(--ops-orange)"></i> ${normales} días normales</span>
+      ${festivos ? `<span>·</span><span style="color:var(--warning)"><i class="fas fa-star"></i> ${festivos} festivos incluidos</span>` : ''}
+    </div>
+    <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow-y:auto">
+      ${dias.slice(0,50).map(d => `<span class="pill ${d.festivo?'pill-warning':'pill-info'}" style="font-size:10px">${d.iso}</span>`).join('')}
+      ${dias.length > 50 ? `<span class="pill pill-gray" style="font-size:10px">+${dias.length-50} más</span>` : ''}
+    </div>`;
+}
+
+async function guardarProgramacionMasiva() {
+  const emp    = document.getElementById('masEmp')?.value;
+  const inicio = document.getElementById('masInicio')?.value;
+  const fin2   = document.getElementById('masFin2')?.value;
+  const ot     = document.getElementById('masOT')?.value || '';
+  const dias   = _getDiasMasivo();
+
+  if (!emp)    { toast('Selecciona un empleado.', 'warning'); return; }
+  if (!inicio || !fin2) { toast('Define el horario de turno.', 'warning'); return; }
+  if (!dias.length) { toast('No hay días para programar.', 'warning'); return; }
+
+  closeModal();
+  toast(`Creando ${dias.length} turnos...`, 'info');
+
+  let ok = 0, err = 0;
+  for (const dia of dias) {
+    const res = await callApi('PROGRAMACION', 'crear', { EMPLEADO: emp, FECHA: dia.iso, HORA_INICIO: inicio, HORA_FIN: fin2, OT: ot });
+    if (res.ok) ok++; else err++;
+  }
+
+  Cache.invalidate('PROGRAMACION');
+  toast(err === 0
+    ? `✅ ${ok} turnos programados correctamente.`
+    : `⚠️ ${ok} creados, ${err} fallaron.`, err === 0 ? 'success' : 'warning');
+  programacion();
 }
 
 function formNuevaProgramacion() {
@@ -2896,13 +3083,10 @@ async function _monitorCargar() {
   const ots = resOTs.ok ? resOTs.datos : [];
   const gpsRegistros = resGPS.ok ? resGPS.datos : [];
 
-  // ── Construir lista de técnicos desde GPS + OT (sin depender de hoja EMPLEADOS) ──
-  // Recopilar todos los nombres únicos que aparecen en GPS o en OTs
-  const nombresSet = new Set();
-  gpsRegistros.forEach(g => { if (g.EMPLEADO) nombresSet.add(g.EMPLEADO); });
-  ots.forEach(ot => { if (ot.TECNICO) nombresSet.add(ot.TECNICO); });
-
-  const tecnicos = [...nombresSet].sort();
+  // ── Construir lista de técnicos desde la hoja EMPLEADOS ──
+  const resEmps = await callApi('EMPLEADOS', 'listar', {});
+  const empleadosReg = resEmps.ok ? resEmps.datos.filter(e => e.ESTADO !== 'Inactivo').map(e => e.NOMBRE) : [];
+  const tecnicos = [...new Set(empleadosReg)].sort();
 
   // Último GPS por técnico
   const ultimoGPS = {};
