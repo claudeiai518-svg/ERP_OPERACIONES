@@ -1284,7 +1284,9 @@ async function ordenes() {
     callApi('ORDENES_TRABAJO', 'listar', {}),
     callApi('ORDENES_TRABAJO', 'estadisticas', {})
   ]);
-  _otData = resOT.ok ? resOT.datos : [];
+  // Ordenar: Pendiente → En Proceso → En Revisión → Cerrada → Cancelado
+  const _ordenEstado = { 'Pendiente':0, 'En Proceso':1, 'En Revisión':2, 'Cerrada':3, 'Cancelado':4 };
+  _otData = resOT.ok ? resOT.datos.slice().sort((a,b) => (_ordenEstado[a.ESTADO]??5) - (_ordenEstado[b.ESTADO]??5)) : [];
   const stats = resStats.ok ? resStats.datos : {};
 
   mainContent(`
@@ -1358,6 +1360,7 @@ function renderTablaOT(data) {
         <td style="font-family:'DM Mono',monospace">${ot.HORAS_TRABAJADAS || 0}h</td>
         <td><div class="td-actions">
           <button class="btn btn-sm btn-secondary" title="Ver detalle" onclick="verDetalleOT('${ot.ID_OT}')"><i class="fas fa-eye"></i></button>
+          <button class="btn btn-sm btn-primary" title="Editar OT" onclick="formEditarOT('${ot.ID_OT}')"><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm btn-warning" title="Cambiar estado" onclick="modalCambiarEstadoOT('${ot.ID_OT}','${ot.ESTADO}')"><i class="fas fa-exchange-alt"></i></button>
           <button class="btn btn-sm btn-primary" title="Registrar horas" onclick="modalRegistrarHoras('${ot.ID_OT}')"><i class="fas fa-clock"></i></button>
         </div></td>
@@ -1428,6 +1431,60 @@ async function guardarNuevaOT() {
   const res = await callApi('ORDENES_TRABAJO', 'crear', datos);
   if (res.ok) { toast(`OT ${res.datos.id} creada.`, 'success'); closeModal(); ordenes(); }
   else toast(res.mensaje, 'error');
+}
+
+async function formEditarOT(idOT) {
+  openModal(`Editar OT: ${idOT}`, `<div class="empty-state" style="padding:20px"><i class="fas fa-spinner fa-spin"></i><h4>Cargando...</h4></div>`, [], true);
+  const res = await callApi('ORDENES_TRABAJO', 'obtener', { idOT });
+  if (!res.ok) { document.getElementById('modalBody').innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>${res.mensaje}</p></div>`; return; }
+  const ot = res.datos.ot;
+  document.getElementById('modalBody').innerHTML = `
+    <div class="form-grid">
+      <div class="f-group"><label>Servicio Asociado *</label>
+        <select id="otEditServicio" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:white">
+          <option value="">⏳ Cargando servicios...</option>
+        </select>
+      </div>
+      <div class="f-group"><label>Técnico Asignado *</label>
+        <select id="otEditTecnico" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:white">
+          <option value="">⏳ Cargando empleados...</option>
+        </select>
+      </div>
+      <div class="f-group"><label>Fecha Programada</label><input id="otEditFecha" type="date" value="${ot.FECHA_PROGRAMADA ? ot.FECHA_PROGRAMADA.substring(0,10) : new Date().toISOString().split('T')[0]}"/></div>
+      <div class="f-group"><label>Estado</label>
+        <select id="otEditEstado">
+          ${['Pendiente','En Proceso','En Revisión','Cerrada','Cancelado'].map(e=>`<option ${e===ot.ESTADO?'selected':''}>${e}</option>`).join('')}
+        </select>
+      </div>
+      <div class="f-group full"><label>Descripción / Observaciones</label><textarea id="otEditDesc">${ot.OBSERVACIONES||''}</textarea></div>
+    </div>`;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-orange" onclick="guardarEditOT('${idOT}')"><i class="fas fa-save"></i> Guardar Cambios</button>`;
+  _cargarServiciosEnSelect('otEditServicio', ot.SERVICIO || '');
+  _cargarEmpleadosEnSelect('otEditTecnico');
+  // Pre-seleccionar técnico actual cuando cargue
+  const waitTecnico = setInterval(() => {
+    const sel = document.getElementById('otEditTecnico');
+    if (!sel || sel.options.length <= 1) return;
+    clearInterval(waitTecnico);
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === ot.TECNICO) { sel.selectedIndex = i; break; }
+    }
+  }, 200);
+}
+
+async function guardarEditOT(idOT) {
+  const datos = {
+    ID_OT: idOT,
+    SERVICIO: v('otEditServicio'), TECNICO: v('otEditTecnico'),
+    FECHA_PROGRAMADA: v('otEditFecha'), ESTADO: v('otEditEstado'),
+    OBSERVACIONES: v('otEditDesc')
+  };
+  if (!datos.SERVICIO || !datos.TECNICO) { toast('Servicio y técnico son requeridos.', 'warning'); return; }
+  const res = await callApi('ORDENES_TRABAJO', 'actualizar', datos);
+  if (res.ok) { toast('OT actualizada correctamente.', 'success'); closeModal(); Cache.invalidate('ORDENES_TRABAJO'); ordenes(); }
+  else toast(res.mensaje || 'Error al actualizar.', 'error');
 }
 
 async function verDetalleOT(idOT) {
@@ -1799,61 +1856,237 @@ async function confirmarVisita(idVisita) {
 // ============================================================
 // VISTA: PROGRAMACIÓN
 // ============================================================
+let _progData = [];
+let _progVistaMode = 'tabla'; // 'tabla' | 'semana' | 'mes'
+
+const TURNOS_ELECTRICOS = [
+  { nombre: 'Diurno',    inicio: '06:00', fin: '14:00', color: '#f0a500', icon: 'fa-sun' },
+  { nombre: 'Mixto',     inicio: '14:00', fin: '22:00', color: '#2952cc', icon: 'fa-cloud-sun' },
+  { nombre: 'Nocturno',  inicio: '22:00', fin: '06:00', color: '#0f1f5c', icon: 'fa-moon' },
+  { nombre: 'Guardia',   inicio: '07:00', fin: '19:00', color: '#16a34a', icon: 'fa-hard-hat' },
+  { nombre: 'Personalizado', inicio: '', fin: '',        color: '#6b7280', icon: 'fa-sliders-h' },
+];
+
 async function programacion() {
   mainContent(`<div class="card"><div class="card-header"><h3>Cargando...</h3></div><div class="card-body">${skeletonTable(['ID','Empleado','Fecha','Inicio','Fin','OT'])}</div></div>`);
   const res = await callApi('PROGRAMACION', 'listar', {});
-  const lista = res.ok ? res.datos : [];
+  _progData = res.ok ? res.datos : [];
+  _renderProgramacion();
+}
 
+function _renderProgramacion() {
   mainContent(`
   <div class="card">
     <div class="card-header">
       <h3><i class="fas fa-calendar-alt" style="color:var(--ops-orange);margin-right:8px"></i>Programación de Personal</h3>
-      <button class="btn btn-orange" onclick="formNuevaProgramacion()"><i class="fas fa-plus"></i> Programar</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <!-- Toggle de vista -->
+        <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+          <button onclick="_setProgramacionVista('tabla')" id="vistaBtnTabla" class="btn btn-sm" style="border-radius:0;border:none;padding:7px 12px;background:${_progVistaMode==='tabla'?'var(--navy)':'white'};color:${_progVistaMode==='tabla'?'white':'var(--text-mid)'}">
+            <i class="fas fa-list"></i> Lista
+          </button>
+          <button onclick="_setProgramacionVista('semana')" id="vistaBtnSemana" class="btn btn-sm" style="border-radius:0;border:none;border-left:1.5px solid var(--border);padding:7px 12px;background:${_progVistaMode==='semana'?'var(--navy)':'white'};color:${_progVistaMode==='semana'?'white':'var(--text-mid)'}">
+            <i class="fas fa-calendar-week"></i> Semana
+          </button>
+          <button onclick="_setProgramacionVista('mes')" id="vistaBtnMes" class="btn btn-sm" style="border-radius:0;border:none;border-left:1.5px solid var(--border);padding:7px 12px;background:${_progVistaMode==='mes'?'var(--navy)':'white'};color:${_progVistaMode==='mes'?'white':'var(--text-mid)'}">
+            <i class="fas fa-calendar-alt"></i> Mes
+          </button>
+        </div>
+        <button class="btn btn-orange" onclick="formNuevaProgramacion()"><i class="fas fa-plus"></i> Programar</button>
+      </div>
     </div>
     <div class="card-body" style="padding-top:14px">
-      <div class="toolbar">
-        <div class="search-box"><i class="fas fa-search"></i>
-          <input type="text" placeholder="Buscar empleado, OT..." oninput="filtrarTabla(this,'tblProg')"/>
-        </div>
-        <input type="date" class="filter-sel" id="filtroProgFecha" onchange="filtrarProgFecha(this.value)" title="Filtrar por fecha"/>
-      </div>
-      <div class="table-wrap">
-        <table id="tblProg">
-          <thead><tr><th>ID</th><th>Empleado</th><th>Fecha</th><th>Hora Inicio</th><th>Hora Fin</th><th>OT Asignada</th><th>Acciones</th></tr></thead>
-          <tbody>
-            ${lista.length === 0
-              ? `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-calendar-alt"></i><h4>Sin programación</h4><p>Programa el primer turno.</p></div></td></tr>`
-              : lista.map(p => `<tr>
-                <td class="td-mono">${p.ID_PROGRAMACION}</td>
-                <td style="font-weight:600">${p.EMPLEADO}</td>
-                <td>${fmtFecha(p.FECHA)}</td>
-                <td><span class="pill pill-info">${p.HORA_INICIO || '—'}</span></td>
-                <td><span class="pill pill-navy">${p.HORA_FIN || '—'}</span></td>
-                <td>${p.OT ? `<span class="td-mono">${p.OT}</span>` : '—'}</td>
-                <td><button class="btn btn-sm btn-danger" onclick="eliminarProgramacion('${p.ID_PROGRAMACION}')"><i class="fas fa-trash"></i></button></td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
+      ${_progVistaMode === 'tabla' ? _renderProgTabla() : _progVistaMode === 'semana' ? _renderProgSemana() : _renderProgMes()}
     </div>
   </div>`);
 }
 
+function _setProgramacionVista(modo) {
+  _progVistaMode = modo;
+  _renderProgramacion();
+}
+
+function _turnoColor(p) {
+  const turno = TURNOS_ELECTRICOS.find(t => t.nombre !== 'Personalizado' && t.inicio === (p.HORA_INICIO||'').substring(0,5) && t.fin === (p.HORA_FIN||'').substring(0,5));
+  return turno ? turno.color : '#6b7280';
+}
+
+function _turnoNombre(p) {
+  const turno = TURNOS_ELECTRICOS.find(t => t.nombre !== 'Personalizado' && t.inicio === (p.HORA_INICIO||'').substring(0,5) && t.fin === (p.HORA_FIN||'').substring(0,5));
+  return turno ? turno.nombre : 'Personalizado';
+}
+
+function _renderProgTabla() {
+  const lista = _progData;
+  return `
+    <div class="toolbar">
+      <div class="search-box"><i class="fas fa-search"></i>
+        <input type="text" placeholder="Buscar empleado, OT..." oninput="filtrarTabla(this,'tblProg')"/>
+      </div>
+      <input type="date" class="filter-sel" id="filtroProgFecha" onchange="filtrarProgFecha(this.value)" title="Filtrar por fecha"/>
+    </div>
+    <div class="table-wrap">
+      <table id="tblProg">
+        <thead><tr><th>ID</th><th>Empleado</th><th>Fecha</th><th>Turno</th><th>Hora Inicio</th><th>Hora Fin</th><th>OT Asignada</th><th>Acciones</th></tr></thead>
+        <tbody>
+          ${lista.length === 0
+            ? `<tr><td colspan="8"><div class="empty-state"><i class="fas fa-calendar-alt"></i><h4>Sin programación</h4><p>Programa el primer turno.</p></div></td></tr>`
+            : lista.map(p => `<tr>
+              <td class="td-mono">${p.ID_PROGRAMACION}</td>
+              <td style="font-weight:600">${p.EMPLEADO}</td>
+              <td>${fmtFecha(p.FECHA)}</td>
+              <td><span class="pill pill-dot" style="background:${_turnoColor(p)}22;color:${_turnoColor(p)}">${_turnoNombre(p)}</span></td>
+              <td><span class="pill pill-info">${p.HORA_INICIO || '—'}</span></td>
+              <td><span class="pill pill-navy">${p.HORA_FIN || '—'}</span></td>
+              <td>${p.OT ? `<span class="td-mono">${p.OT}</span>` : '—'}</td>
+              <td><div class="td-actions">
+                <button class="btn btn-sm btn-secondary" title="Editar" onclick="formEditarProgramacion('${p.ID_PROGRAMACION}','${p.EMPLEADO}','${p.FECHA}','${p.HORA_INICIO||''}','${p.HORA_FIN||''}','${p.OT||''}')"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="eliminarProgramacion('${p.ID_PROGRAMACION}')"><i class="fas fa-trash"></i></button>
+              </div></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function _renderProgSemana() {
+  // Calcular lunes de la semana actual
+  const hoy = new Date();
+  const dia = hoy.getDay() || 7; // 1=lun..7=dom
+  const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - dia + 1); lunes.setHours(0,0,0,0);
+  const dias = Array.from({length:7}, (_,i) => { const d = new Date(lunes); d.setDate(lunes.getDate()+i); return d; });
+  const diasNombres = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+  return `
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600;color:var(--text-mid)">Semana del ${dias[0].toLocaleDateString('es-CO',{day:'2-digit',month:'short'})} al ${dias[6].toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'})}</span>
+    </div>
+    <div style="overflow-x:auto">
+      <div style="display:grid;grid-template-columns:140px repeat(7,1fr);gap:2px;min-width:700px">
+        <!-- Header días -->
+        <div style="background:var(--bg2);border-radius:8px;padding:8px;font-size:11px;font-weight:700;color:var(--text-muted);text-align:center">EMPLEADO</div>
+        ${dias.map((d,i) => {
+          const esHoy = d.toDateString() === hoy.toDateString();
+          return `<div style="background:${esHoy?'var(--navy)':'var(--bg2)'};border-radius:8px;padding:8px;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:${esHoy?'rgba(255,255,255,.6)':'var(--text-muted)'}">${diasNombres[i]}</div>
+            <div style="font-size:14px;font-weight:800;color:${esHoy?'white':'var(--navy)'}">${d.getDate()}</div>
+          </div>`;
+        }).join('')}
+        ${(() => {
+          // Empleados únicos
+          const emps = [...new Set(_progData.map(p => p.EMPLEADO))].sort();
+          if (!emps.length) return `<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text-muted)">Sin programación esta semana</div>`;
+          return emps.map(emp => {
+            const celdaEmp = `<div style="background:var(--bg);border-radius:8px;padding:8px 10px;font-weight:600;font-size:12px;color:var(--navy);display:flex;align-items:center;gap:6px">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${emp.charAt(0).toUpperCase()}</div>
+              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${emp}</span>
+            </div>`;
+            const celdas = dias.map(d => {
+              const iso = d.toISOString().split('T')[0];
+              const prog = _progData.filter(p => p.EMPLEADO === emp && (p.FECHA||'').substring(0,10) === iso);
+              if (!prog.length) return `<div style="background:var(--bg);border-radius:8px;min-height:60px"></div>`;
+              return `<div style="display:flex;flex-direction:column;gap:3px">
+                ${prog.map(p => `
+                  <div style="background:${_turnoColor(p)};border-radius:7px;padding:5px 7px;cursor:pointer" title="${_turnoNombre(p)}: ${p.HORA_INICIO}-${p.HORA_FIN}${p.OT?' · '+p.OT:''}">
+                    <div style="font-size:10px;font-weight:700;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_turnoNombre(p)}</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,.8)">${p.HORA_INICIO||''}–${p.HORA_FIN||''}</div>
+                    ${p.OT?`<div style="font-size:9px;color:rgba(255,255,255,.7)">${p.OT}</div>`:''}
+                  </div>`).join('')}
+              </div>`;
+            });
+            return celdaEmp + celdas.join('');
+          }).join('');
+        })()}
+      </div>
+    </div>`;
+}
+
+function _renderProgMes() {
+  const hoy = new Date();
+  const año = hoy.getFullYear(), mes = hoy.getMonth();
+  const primerDia = new Date(año, mes, 1);
+  const ultimoDia = new Date(año, mes+1, 0);
+  const startDow = (primerDia.getDay() + 6) % 7; // 0=lun
+  const totalDias = ultimoDia.getDate();
+  const mesNombre = hoy.toLocaleDateString('es-CO', {month:'long', year:'numeric'});
+  const diasSem = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+  let celdas = '';
+  // Celdas vacías antes del día 1
+  for(let i=0; i<startDow; i++) celdas += `<div style="background:var(--bg);border-radius:8px;min-height:90px;opacity:.4"></div>`;
+  for(let d=1; d<=totalDias; d++) {
+    const fecha = new Date(año, mes, d);
+    const iso = fecha.toISOString().split('T')[0];
+    const esHoy = fecha.toDateString() === hoy.toDateString();
+    const prog = _progData.filter(p => (p.FECHA||'').substring(0,10) === iso);
+    celdas += `<div style="background:${esHoy?'rgba(15,31,92,.07)':'var(--bg)'};border-radius:8px;min-height:90px;padding:7px 8px;border:${esHoy?'2px solid var(--navy)':'1.5px solid var(--border)'}">
+      <div style="font-size:12px;font-weight:${esHoy?'800':'600'};color:${esHoy?'var(--navy)':'var(--text-muted)'};margin-bottom:4px">${d}</div>
+      ${prog.slice(0,3).map(p => `
+        <div style="background:${_turnoColor(p)};border-radius:5px;padding:2px 5px;margin-bottom:2px;cursor:pointer" title="${p.EMPLEADO} · ${_turnoNombre(p)}">
+          <div style="font-size:9px;font-weight:700;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.EMPLEADO.split(' ')[0]} · ${_turnoNombre(p)}</div>
+        </div>`).join('')}
+      ${prog.length > 3 ? `<div style="font-size:9px;color:var(--text-muted);font-weight:600">+${prog.length-3} más</div>` : ''}
+    </div>`;
+  }
+
+  return `
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:14px;font-weight:700;color:var(--navy);text-transform:capitalize">${mesNombre}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+      ${diasSem.map(d=>`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--text-muted);padding:4px">${d}</div>`).join('')}
+      ${celdas}
+    </div>
+    <!-- Leyenda turnos -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+      ${TURNOS_ELECTRICOS.filter(t=>t.nombre!=='Personalizado').map(t=>`
+        <div style="display:flex;align-items:center;gap:5px">
+          <div style="width:12px;height:12px;border-radius:3px;background:${t.color}"></div>
+          <span style="font-size:11px;color:var(--text-mid);font-weight:600">${t.nombre} (${t.inicio}–${t.fin})</span>
+        </div>`).join('')}
+    </div>`;
+}
+
 async function filtrarProgFecha(fecha) {
-  if (!fecha) { programacion(); return; }
+  if (!fecha) { _renderProgramacion(); return; }
   const res = await callApi('PROGRAMACION', 'porFecha', { fecha });
   const lista = res.ok ? res.datos : [];
   document.querySelector('#tblProg tbody').innerHTML = lista.length === 0
-    ? `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Sin programación para esta fecha.</td></tr>`
+    ? `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Sin programación para esta fecha.</td></tr>`
     : lista.map(p => `<tr>
         <td class="td-mono">${p.ID_PROGRAMACION}</td>
         <td style="font-weight:600">${p.EMPLEADO}</td>
         <td>${fmtFecha(p.FECHA)}</td>
+        <td><span class="pill pill-dot" style="background:${_turnoColor(p)}22;color:${_turnoColor(p)}">${_turnoNombre(p)}</span></td>
         <td><span class="pill pill-info">${p.HORA_INICIO || '—'}</span></td>
         <td><span class="pill pill-navy">${p.HORA_FIN || '—'}</span></td>
         <td>${p.OT ? `<span class="td-mono">${p.OT}</span>` : '—'}</td>
-        <td><button class="btn btn-sm btn-danger" onclick="eliminarProgramacion('${p.ID_PROGRAMACION}')"><i class="fas fa-trash"></i></button></td>
+        <td><div class="td-actions">
+          <button class="btn btn-sm btn-secondary" onclick="formEditarProgramacion('${p.ID_PROGRAMACION}','${p.EMPLEADO}','${p.FECHA}','${p.HORA_INICIO||''}','${p.HORA_FIN||''}','${p.OT||''}')"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="eliminarProgramacion('${p.ID_PROGRAMACION}')"><i class="fas fa-trash"></i></button>
+        </div></td>
       </tr>`).join('');
+}
+
+function _turnosHtml(inicioId, finId) {
+  return `
+    <div class="f-group full" style="grid-column:1/-1">
+      <label>Turno Eléctrico</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        ${TURNOS_ELECTRICOS.map(t => `
+          <button type="button" class="btn btn-sm btn-secondary" onclick="seleccionarTurno('${t.inicio}','${t.fin}','${inicioId}','${finId}',this)"
+            style="border-color:${t.color};color:${t.color};gap:5px">
+            <i class="fas ${t.icon}"></i> ${t.nombre}${t.nombre!=='Personalizado'?` (${t.inicio}–${t.fin})`:''}
+          </button>`).join('')}
+      </div>
+    </div>`;
+}
+
+function seleccionarTurno(inicio, fin, inicioId, finId, btn) {
+  if (inicio) { const el = document.getElementById(inicioId); if(el) el.value = inicio; }
+  if (fin)    { const el = document.getElementById(finId);    if(el) el.value = fin; }
+  document.querySelectorAll('.turno-activo').forEach(b => b.classList.remove('turno-activo'));
+  btn.classList.add('turno-activo');
 }
 
 function formNuevaProgramacion() {
@@ -1865,8 +2098,9 @@ function formNuevaProgramacion() {
         </select>
       </div>
       <div class="f-group"><label>Fecha *</label><input id="progFecha" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
-      <div class="f-group"><label>Hora Inicio *</label><input id="progInicio" type="time" value="07:00"/></div>
-      <div class="f-group"><label>Hora Fin *</label><input id="progFin" type="time" value="17:00"/></div>
+      ${_turnosHtml('progInicio','progFin')}
+      <div class="f-group"><label>Hora Inicio *</label><input id="progInicio" type="time" value="06:00"/></div>
+      <div class="f-group"><label>Hora Fin *</label><input id="progFin" type="time" value="14:00"/></div>
       <div class="f-group full"><label>OT Asignada (opcional)</label><input id="progOT" placeholder="Ej: OT-001"/></div>
     </div>`,
     [
@@ -1880,14 +2114,51 @@ async function guardarProgramacion() {
   const datos = { EMPLEADO: v('progEmp'), FECHA: v('progFecha'), HORA_INICIO: v('progInicio'), HORA_FIN: v('progFin'), OT: v('progOT') };
   if (!datos.EMPLEADO || !datos.FECHA || !datos.HORA_INICIO || !datos.HORA_FIN) { toast('Empleado, fecha y horario son requeridos.', 'warning'); return; }
   const res = await callApi('PROGRAMACION', 'crear', datos);
-  if (res.ok) { toast('Programación creada.', 'success'); closeModal(); programacion(); }
+  if (res.ok) { toast('Programación creada.', 'success'); closeModal(); Cache.invalidate('PROGRAMACION'); programacion(); }
   else toast(res.mensaje, 'error');
+}
+
+function formEditarProgramacion(id, empleado, fecha, inicio, fin, ot) {
+  openModal('Editar Programación', `
+    <div class="form-grid">
+      <div class="f-group"><label>Empleado *</label>
+        <select id="progEdiEmp" style="padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;color:var(--text);background:white">
+          <option value="">⏳ Cargando...</option>
+        </select>
+      </div>
+      <div class="f-group"><label>Fecha *</label><input id="progEdiFecha" type="date" value="${(fecha||'').substring(0,10)}"/></div>
+      ${_turnosHtml('progEdiInicio','progEdiFin')}
+      <div class="f-group"><label>Hora Inicio *</label><input id="progEdiInicio" type="time" value="${inicio||'06:00'}"/></div>
+      <div class="f-group"><label>Hora Fin *</label><input id="progEdiFin" type="time" value="${fin||'14:00'}"/></div>
+      <div class="f-group full"><label>OT Asignada (opcional)</label><input id="progEdiOT" value="${ot||''}"/></div>
+    </div>`,
+    [
+      { label: 'Cancelar', cls: 'btn-secondary', action: 'closeModal()' },
+      { label: '<i class="fas fa-save"></i> Guardar', cls: 'btn-primary', action: `confirmarEditProg('${id}')` }
+    ]);
+  _cargarEmpleadosEnSelect('progEdiEmp');
+  const waitEmp = setInterval(() => {
+    const sel = document.getElementById('progEdiEmp');
+    if (!sel || sel.options.length <= 1) return;
+    clearInterval(waitEmp);
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === empleado) { sel.selectedIndex = i; break; }
+    }
+  }, 200);
+}
+
+async function confirmarEditProg(id) {
+  const datos = { ID_PROGRAMACION: id, EMPLEADO: v('progEdiEmp'), FECHA: v('progEdiFecha'), HORA_INICIO: v('progEdiInicio'), HORA_FIN: v('progEdiFin'), OT: v('progEdiOT') };
+  if (!datos.EMPLEADO || !datos.FECHA) { toast('Empleado y fecha son requeridos.', 'warning'); return; }
+  const res = await callApi('PROGRAMACION', 'actualizar', datos);
+  if (res.ok) { toast('Programación actualizada.', 'success'); closeModal(); Cache.invalidate('PROGRAMACION'); programacion(); }
+  else toast(res.mensaje || 'Error al actualizar.', 'error');
 }
 
 async function eliminarProgramacion(id) {
   if (!confirm(`¿Eliminar la programación ${id}?`)) return;
   const res = await callApi('PROGRAMACION', 'eliminar', { idProgramacion: id });
-  if (res.ok) { toast('Programación eliminada.', 'success'); programacion(); }
+  if (res.ok) { toast('Programación eliminada.', 'success'); Cache.invalidate('PROGRAMACION'); programacion(); }
   else toast(res.mensaje, 'error');
 }
 
@@ -2939,7 +3210,7 @@ async function _cargarServiciosEnSelect(selectId, preselect = '') {
   const res = await callApi('SERVICIOS', 'listar', {});
   const sel = document.getElementById(selectId);
   if (!sel) return;
-  const servicios = res.ok ? res.datos.filter(s => s.ESTADO !== 'Cerrado' && s.ESTADO !== 'Cancelado') : [];
+  const servicios = res.ok ? res.datos.filter(s => s.ESTADO !== 'Cerrado' && s.ESTADO !== 'Cancelado' && s.ESTADO !== 'Cerrada' && s.ESTADO !== 'Cancelada') : [];
   sel.innerHTML = '<option value="">Seleccionar servicio...</option>' +
     servicios.map(s => {
       const label = `${s.ID_SERVICIO} · ${s.CLIENTE || '—'}${s.TIPO_SERVICIO ? ' — ' + s.TIPO_SERVICIO : ''}`;
