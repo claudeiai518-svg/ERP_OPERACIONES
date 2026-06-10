@@ -428,6 +428,48 @@ select.filter-sel:focus { border-color: var(--ops-orange); outline: none; }
 
 /* Progress bar */
 .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+
+/* ── Barra de progreso global (login + operaciones) ── */
+#globalProgressWrap {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(15,31,92,.55); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease;
+}
+#globalProgressWrap.visible { opacity: 1; pointer-events: all; }
+#globalProgressBox {
+  background: white; border-radius: 18px;
+  padding: 32px 40px; width: 340px; text-align: center;
+  box-shadow: 0 16px 48px rgba(15,31,92,.28);
+  animation: slideUp .25s cubic-bezier(.4,0,.2,1);
+}
+#globalProgressIcon {
+  width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 16px;
+  background: linear-gradient(135deg, var(--navy), var(--ops-orange));
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 22px;
+  box-shadow: 0 6px 20px rgba(234,88,12,.35);
+}
+#globalProgressTitle {
+  font-size: 15px; font-weight: 800; color: var(--navy); margin-bottom: 4px;
+}
+#globalProgressSub {
+  font-size: 12.5px; color: var(--text-muted); margin-bottom: 20px; min-height: 18px;
+}
+#globalProgressTrack {
+  height: 8px; background: var(--bg2); border-radius: 8px;
+  overflow: hidden; margin-bottom: 10px;
+}
+#globalProgressFill {
+  height: 100%; width: 0%; border-radius: 8px;
+  background: linear-gradient(90deg, var(--navy), var(--ops-orange));
+  transition: width .35s cubic-bezier(.4,0,.2,1);
+}
+#globalProgressPct {
+  font-size: 12px; font-weight: 700; color: var(--ops-orange);
+  font-family: 'DM Mono', monospace;
+}
 .progress-fill { height: 100%; border-radius: 3px; transition: width .5s ease; }
 
 /* Responsive */
@@ -608,6 +650,19 @@ select.filter-sel:focus { border-color: var(--ops-orange); outline: none; }
 <!-- TOAST -->
 <div id="toastContainer"></div>
 
+<!-- BARRA DE PROGRESO GLOBAL -->
+<div id="globalProgressWrap">
+  <div id="globalProgressBox">
+    <div id="globalProgressIcon"><i class="fas fa-spinner fa-spin" id="globalProgressIco"></i></div>
+    <div id="globalProgressTitle">Procesando...</div>
+    <div id="globalProgressSub">Por favor espera</div>
+    <div id="globalProgressTrack">
+      <div id="globalProgressFill"></div>
+    </div>
+    <div id="globalProgressPct">0%</div>
+  </div>
+</div>
+
 <!-- ============================================================
      JAVASCRIPT
      ============================================================ -->
@@ -731,14 +786,17 @@ async function doLogin() {
   }
   btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:6px"></i> Verificando...';
   errEl.style.display = 'none';
+  showProgress('Iniciando sesión...', 'Verificando credenciales', 'fa-lock fa-spin');
   const res = await callApi('AUTH', 'login', { username, password });
   if (res.ok) {
+    hideProgress('¡Acceso concedido!');
     APP.token = res.datos.token;
     APP.sesion = { username, rol: res.datos.rol, empleado: res.datos.empleado };
     localStorage.setItem('erp_ops_token', APP.token);
     localStorage.setItem('erp_ops_sesion', JSON.stringify(APP.sesion));
     initApp();
   } else {
+    hideProgress();
     errMsg.textContent = res.mensaje || 'Credenciales incorrectas';
     errEl.style.display = 'flex';
     btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:6px"></i> Iniciar Sesión';
@@ -886,6 +944,50 @@ function toast(msg, type = 'info') {
     el.style.opacity = '0'; el.style.transform = 'translateX(100%)'; el.style.transition = 'all .4s';
     setTimeout(() => el.remove(), 400);
   }, 3500);
+}
+
+// ============================================================
+// BARRA DE PROGRESO GLOBAL
+// ============================================================
+let _progressTimer = null;
+
+function showProgress(titulo = 'Procesando...', sub = 'Por favor espera', icono = 'fa-spinner fa-spin') {
+  const wrap  = document.getElementById('globalProgressWrap');
+  const title = document.getElementById('globalProgressTitle');
+  const subEl = document.getElementById('globalProgressSub');
+  const ico   = document.getElementById('globalProgressIco');
+  const fill  = document.getElementById('globalProgressFill');
+  const pct   = document.getElementById('globalProgressPct');
+  title.textContent = titulo;
+  subEl.textContent = sub;
+  ico.className = `fas ${icono}`;
+  fill.style.width = '0%';
+  pct.textContent = '0%';
+  wrap.classList.add('visible');
+  // Animación de progreso falso para mostrar actividad
+  let p = 0;
+  if (_progressTimer) clearInterval(_progressTimer);
+  _progressTimer = setInterval(() => {
+    // Sube rápido hasta 85%, luego se detiene
+    const step = p < 60 ? 4 : p < 80 ? 1.5 : 0.4;
+    p = Math.min(p + step, 85);
+    fill.style.width = p + '%';
+    pct.textContent = Math.round(p) + '%';
+  }, 120);
+}
+
+function hideProgress(exitoMsg = '') {
+  if (_progressTimer) { clearInterval(_progressTimer); _progressTimer = null; }
+  const fill = document.getElementById('globalProgressFill');
+  const pct  = document.getElementById('globalProgressPct');
+  const sub  = document.getElementById('globalProgressSub');
+  // Completar la barra hasta 100%
+  fill.style.width = '100%';
+  pct.textContent = '100%';
+  if (exitoMsg) sub.textContent = exitoMsg;
+  setTimeout(() => {
+    document.getElementById('globalProgressWrap').classList.remove('visible');
+  }, 350);
 }
 
 function estadoPill(estado) {
@@ -1094,6 +1196,7 @@ async function servicios() {
                 <td><div class="td-actions">
                   <button class="btn btn-sm btn-secondary" onclick="crearOTdesdeServicio('${s.ID_SERVICIO}','${s.CLIENTE}')"><i class="fas fa-bolt"></i> OT</button>
                   <button class="btn btn-sm btn-secondary" onclick="cambiarEstadoServicio('${s.ID_SERVICIO}','${s.ESTADO}')"><i class="fas fa-exchange-alt"></i></button>
+                  <button class="btn btn-sm btn-danger" title="Enviar a papelera" onclick="eliminarRegistroGenerico('SERVICIOS','${s.ID_SERVICIO}','${(s.CLIENTE||'').replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
                 </div></td>
               </tr>`).join('')}
           </tbody>
@@ -1138,7 +1241,9 @@ async function guardarServicio() {
     FECHA_SOLICITUD: v('srvFecha'), SUCURSAL: v('srvSucursal'), DESCRIPCION: v('srvDesc')
   };
   if (!datos.CLIENTE || !datos.TIPO_SERVICIO) { toast('Cliente y tipo de servicio son requeridos.', 'warning'); return; }
+  showProgress('Creando servicio...', 'Guardando en la base de datos', 'fa-charging-station fa-spin');
   const res = await callApi('SERVICIOS', 'crear', datos);
+  hideProgress();
   if (res.ok) { toast(`Servicio ${res.datos.id} creado.`, 'success'); closeModal(); servicios(); }
   else toast(res.mensaje, 'error');
 }
@@ -1160,7 +1265,9 @@ async function cambiarEstadoServicio(id, estadoActual) {
 
 async function confirmarCambioEstadoServ(id) {
   const estado = v('nuevoEstadoServ');
+  showProgress('Cambiando estado...', 'Actualizando servicio', 'fa-sync fa-spin');
   const res = await callApi('SERVICIOS', 'cambiarEstado', { idServicio: id, estado });
+  hideProgress();
   if (res.ok) { toast(res.mensaje, 'success'); closeModal(); servicios(); }
   else toast(res.mensaje, 'error');
 }
@@ -1188,7 +1295,9 @@ async function eliminarRegistroGenerico(modulo, idValor, nombreItem = '') {
   if (!cfg) { toast('Módulo no soportado para eliminación.', 'error'); return; }
   if (!confirm(`¿Enviar a la papelera ${cfg.label.toLowerCase()} ${nombreItem || idValor}?\n\nPodrás restaurarlo desde la Papelera de reciclaje.`)) return;
   const datos = {}; datos[cfg.idCampo] = idValor;
+  showProgress('Enviando a papelera...', `Eliminando ${cfg.label.toLowerCase()}`, 'fa-trash fa-bounce');
   const res = await callApi(modulo, 'eliminar', datos);
+  hideProgress();
   if (res.ok) {
     toast(`${cfg.label} enviado a la papelera.`, 'success');
     Cache.invalidate(modulo);
@@ -1245,7 +1354,9 @@ async function papelera() {
 
 async function restaurarDePapelera(modulo, id) {
   if (!confirm(`¿Restaurar el registro ${id} de ${modulo}?`)) return;
+  showProgress('Restaurando...', `Recuperando ${id}`, 'fa-trash-restore fa-spin');
   const res = await callApi('PAPELERA', 'restaurar', { modulo, id });
+  hideProgress();
   if (res.ok) {
     toast('Registro restaurado.', 'success');
     Cache.invalidate(modulo); Cache.invalidate('PAPELERA');
@@ -1255,7 +1366,9 @@ async function restaurarDePapelera(modulo, id) {
 
 async function eliminarDefinitivo(modulo, id) {
   if (!confirm(`¿Eliminar DEFINITIVAMENTE el registro ${id} de ${modulo}? Esta acción no se puede deshacer.`)) return;
+  showProgress('Eliminando definitivamente...', 'Esta acción no se puede deshacer', 'fa-times-circle fa-spin');
   const res = await callApi('PAPELERA', 'eliminarDefinitivo', { modulo, id });
+  hideProgress();
   if (res.ok) {
     toast('Registro eliminado definitivamente.', 'success');
     Cache.invalidate('PAPELERA');
@@ -1265,7 +1378,9 @@ async function eliminarDefinitivo(modulo, id) {
 
 async function confirmarVaciarPapelera() {
   if (!confirm('¿Vaciar la papelera por completo? Esta acción eliminará permanentemente todos los registros y no se puede deshacer.')) return;
+  showProgress('Vaciando papelera...', 'Eliminando todos los registros', 'fa-trash fa-spin');
   const res = await callApi('PAPELERA', 'vaciar', {});
+  hideProgress();
   if (res.ok) { toast('Papelera vaciada.', 'success'); Cache.invalidate('PAPELERA'); papelera(); }
   else toast(res.mensaje || 'No se pudo vaciar la papelera.', 'error');
 }
@@ -1363,6 +1478,7 @@ function renderTablaOT(data) {
           <button class="btn btn-sm btn-primary" title="Editar OT" onclick="formEditarOT('${ot.ID_OT}')"><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm btn-warning" title="Cambiar estado" onclick="modalCambiarEstadoOT('${ot.ID_OT}','${ot.ESTADO}')"><i class="fas fa-exchange-alt"></i></button>
           <button class="btn btn-sm btn-primary" title="Registrar horas" onclick="modalRegistrarHoras('${ot.ID_OT}')"><i class="fas fa-clock"></i></button>
+          <button class="btn btn-sm btn-danger" title="Enviar a papelera" onclick="eliminarRegistroGenerico('ORDENES_TRABAJO','${ot.ID_OT}')"><i class="fas fa-trash"></i></button>
         </div></td>
       </tr>`).join('')}
     </tbody>
