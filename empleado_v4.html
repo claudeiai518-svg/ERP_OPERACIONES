@@ -896,6 +896,10 @@ canvas#firmaCanvas { display: block; width: 100%; height: 160px; }
 const CFG = {
   SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwxTq1_MyRjNpaCAAYUxf5fuTbDK93oMZde_M2m87rrJs8kQZKNlytlpxCDbOSHuDkQ/exec',
   INV_URL: 'https://script.google.com/macros/s/AKfycbwWjgxOgUHMlpA1rXWC67Hs9d4-b_U3CsAnXPk5nqZcqPe91oT1Kdnm0C-_YC8BxYWP/exec',
+  // Llave de servicio: habilita INVENTARIO/listar y MOVIMIENTOS/registrar en
+  // ERP_INVENTARIO sin que el técnico tenga sesión propia ahí. Debe coincidir
+  // EXACTAMENTE con PORTAL_TECNICO_KEY en el Code.gs de ERP_INVENTARIO.
+  INV_SERVICE_KEY: 'PT-INV-3bfa7d9575300175c96d69234c551bc8',
   token: null,
   sesion: null,
   currentPage: 'inicio',
@@ -962,11 +966,13 @@ async function apiPost(modulo, accion, datos = {}) {
   }
 }
 
-// API INV — llama al ERP Inventario (URL separada)
+// API INV — llama al ERP Inventario (URL separada).
+// Usa INV_SERVICE_KEY (llave de servicio) en vez de CFG.token, porque
+// los técnicos no son usuarios registrados en ERP_INVENTARIO ni en ERP CORE.
 function apiInv(modulo, accion, datos = {}) {
   return new Promise((resolve) => {
     const cb = '_inv_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-    const payload = encodeURIComponent(JSON.stringify({ modulo, accion, datos, token: CFG.token }));
+    const payload = encodeURIComponent(JSON.stringify({ modulo, accion, datos, token: CFG.INV_SERVICE_KEY }));
     const url = CFG.INV_URL + '?callback=' + cb + '&payload=' + payload;
     const timer = setTimeout(() => {
       delete window[cb];
