@@ -1453,7 +1453,7 @@ function renderDetalleOT(ot) {
                 <div class="act-title">${a.DESCRIPCION || '—'}</div>
                 <div class="act-sub">${a.FECHA ? fmtFecha(a.FECHA) : ''}${a.DURACION ? ' · ' + a.DURACION + ' min' : ''}</div>
               </div>
-              ${esAdmin() ? `
+              ${esAdmin() || puedeEditar ? `
               <button onclick="sheetEditarActividad(${idx})" title="Editar"
                 style="background:none;border:none;padding:6px;cursor:pointer;display:flex;flex-shrink:0">
                 <span class="ms" style="font-size:18px;color:var(--text-muted)">edit</span>
@@ -1519,7 +1519,10 @@ function renderDetalleOT(ot) {
         </p>
         <div id="firmaImgBox_${ot.ID_OT}"></div>
         ${ot.FIRMA_CLIENTE
-          ? `<div class="alert alert-success" style="margin-bottom:0"><span class="ms" style="font-size:18px">check_circle</span>Firma del cliente registrada</div>`
+          ? `<div class="alert alert-success" style="margin-bottom:10px"><span class="ms" style="font-size:18px">check_circle</span>Firma del cliente registrada</div>
+             <button class="btn btn-secondary btn-full" onclick="sheetFirmaCliente('${ot.ID_OT}')">
+               <span class="ms" style="font-size:16px">edit</span> Volver a firmar
+             </button>`
           : `<button class="btn btn-orange btn-full" onclick="sheetFirmaCliente('${ot.ID_OT}')">
                <span class="ms" style="font-size:16px">edit</span> Tomar Firma del Cliente
              </button>`}
