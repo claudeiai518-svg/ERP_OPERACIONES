@@ -896,9 +896,10 @@ canvas#firmaCanvas { display: block; width: 100%; height: 160px; }
 const CFG = {
   SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwxTq1_MyRjNpaCAAYUxf5fuTbDK93oMZde_M2m87rrJs8kQZKNlytlpxCDbOSHuDkQ/exec',
   INV_URL: 'https://script.google.com/macros/s/AKfycbwWjgxOgUHMlpA1rXWC67Hs9d4-b_U3CsAnXPk5nqZcqPe91oT1Kdnm0C-_YC8BxYWP/exec',
-  // Llave de servicio: habilita INVENTARIO/listar y MOVIMIENTOS/registrar en
-  // ERP_INVENTARIO sin que el técnico tenga sesión propia ahí. Debe coincidir
-  // EXACTAMENTE con PORTAL_TECNICO_KEY en el Code.gs de ERP_INVENTARIO.
+  // Llave de servicio: habilita INVENTARIO/listar, MOVIMIENTOS/registrar y
+  // MOVIMIENTOS/anular en ERP_INVENTARIO sin que el técnico tenga sesión
+  // propia ahí. Debe coincidir EXACTAMENTE con PORTAL_TECNICO_KEY en el
+  // Code.gs de ERP_INVENTARIO.
   INV_SERVICE_KEY: 'PT-INV-3bfa7d9575300175c96d69234c551bc8',
   token: null,
   sesion: null,
@@ -1459,14 +1460,18 @@ function renderDetalleOT(ot) {
         </div>
         ${materiales.length === 0
           ? '<p style="font-size:13px;color:var(--text-muted)">Sin consumo de materiales.</p>'
-          : materiales.map(m => `
+          : (window._otMaterialesActual = materiales, materiales.map((m, idx) => `
             <div class="act-item">
               <div class="act-icon-wrap info"><span class="ms" style="font-size:18px">box</span></div>
               <div class="act-content">
                 <div class="act-title">${m.ITEM || '—'}</div>
                 <div class="act-sub">Cantidad: ${m.CANTIDAD || 1}</div>
               </div>
-            </div>`).join('')}
+              ${puedeEditar ? `<button onclick="anularMaterialIdx('${ot.ID_OT}', ${idx})" title="Anular consumo"
+                style="background:none;border:none;padding:6px;cursor:pointer;display:flex;align-items:center;flex-shrink:0">
+                <span class="ms" style="font-size:18px;color:var(--danger)">delete</span>
+              </button>` : ''}
+            </div>`).join(''))}
         ${puedeEditar ? `<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="sheetRegistrarMaterial('${ot.ID_OT}')"><span class="ms" style="font-size:16px">add</span> Registrar consumo</button>` : ''}
       </div>
     </div>
@@ -1875,25 +1880,8 @@ async function guardarMaterial(idOT) {
   btn.innerHTML = '<span class="ms" style="font-size:16px;animation:spin .7s linear infinite;display:inline-block">progress_activity</span> Guardando...';
   btn.disabled = true;
 
-  // 1. Registrar consumo en OT (backend CORE)
-  const resOT = await api('CONSUMO', 'registrar', {
-    OT: idOT,
-    ITEM: _invItemSeleccionado.DESCRIPCION,
-    ID_ITEM: _invItemSeleccionado.ID_ITEM,
-    CODIGO: _invItemSeleccionado.CODIGO || '',
-    CANTIDAD: cant,
-    UNIDAD: _invItemSeleccionado.UNIDAD_MEDIDA || 'und',
-    OBSERVACIONES: obs,
-  });
-
-  if (!resOT.ok) {
-    toast(resOT.mensaje || 'Error al registrar consumo', 'error');
-    btn.innerHTML = '<span class="ms" style="font-size:16px">save</span> Guardar consumo';
-    btn.disabled = false;
-    return;
-  }
-
-  // 2. Descontar stock en inventario (SALIDA)
+  // 1. Descontar stock en inventario primero (SALIDA) — así obtenemos el
+  //    ID_MOVIMIENTO para vincularlo al registro de consumo de la OT.
   const resInv = await apiInv('MOVIMIENTOS', 'registrar', {
     ID_ITEM: _invItemSeleccionado.ID_ITEM,
     TIPO: 'SALIDA',
@@ -1904,8 +1892,26 @@ async function guardarMaterial(idOT) {
   });
 
   if (!resInv.ok) {
-    // Consumo ya quedó en OT pero inventario falló — avisar sin revertir
-    toast('Consumo guardado, pero no se pudo descontar inventario: ' + (resInv.mensaje || ''), 'warning');
+    toast(resInv.mensaje || 'No se pudo descontar inventario', 'error');
+    btn.innerHTML = '<span class="ms" style="font-size:16px">save</span> Guardar consumo';
+    btn.disabled = false;
+    return;
+  }
+
+  // 2. Registrar consumo en la OT (backend OPERACIONES), vinculado al movimiento.
+  const resOT = await api('CONSUMO', 'registrar', {
+    OT: idOT,
+    ITEM: _invItemSeleccionado.DESCRIPCION,
+    ID_ITEM: _invItemSeleccionado.ID_ITEM,
+    CODIGO: _invItemSeleccionado.CODIGO || '',
+    CANTIDAD: cant,
+    UNIDAD: _invItemSeleccionado.UNIDAD_MEDIDA || 'und',
+    OBSERVACIONES: obs,
+    ID_MOVIMIENTO_INV: resInv.datos?.id || '',
+  });
+
+  if (!resOT.ok) {
+    toast('Stock descontado, pero no se pudo registrar el consumo en la OT: ' + (resOT.mensaje || ''), 'warning');
   } else {
     toast(`✅ Material registrado · Stock: ${resInv.datos?.stockNuevo ?? '?'} ${_invItemSeleccionado.UNIDAD_MEDIDA || 'und'}`, 'success');
   }
@@ -1916,6 +1922,48 @@ async function guardarMaterial(idOT) {
   cacheClear();
   verOT(idOT);
 }
+
+// — Anular consumo de material (devuelve stock y quita el registro de la OT) —
+async function anularMaterialIdx(idOT, idx) {
+  const m = (window._otMaterialesActual || [])[idx];
+  if (!m) return;
+  await anularMaterial(idOT, m.ID_CONSUMO, m.ID_MOVIMIENTO_INV, m.ITEM, m.CANTIDAD);
+}
+
+async function anularMaterial(idOT, idConsumo, idMovimientoInv, descripcion, cantidad) {
+  if (!idConsumo) { toast('No se pudo identificar el registro a anular', 'error'); return; }
+
+  if (!idMovimientoInv) {
+    // Registro antiguo, sin vínculo al movimiento de inventario (versión previa)
+    if (!confirm(`"${descripcion}" no tiene vínculo con un movimiento de inventario (registro anterior a esta actualización). Se quitará de la lista de la OT, pero el stock NO se ajustará automáticamente. ¿Continuar?`)) return;
+  } else {
+    if (!confirm(`¿Anular el consumo de "${descripcion}" (${cantidad})? El stock se devolverá automáticamente al inventario.`)) return;
+  }
+
+  if (idMovimientoInv) {
+    const resMov = await apiInv('MOVIMIENTOS', 'anular', {
+      idMovimiento: idMovimientoInv,
+      responsable: CFG.sesion?.empleado || CFG.sesion?.username || 'Técnico',
+    });
+    if (!resMov.ok) {
+      toast('No se pudo revertir el stock: ' + (resMov.mensaje || ''), 'error');
+      return;
+    }
+  }
+
+  const resCons = await api('CONSUMO', 'eliminar', { idConsumo });
+  if (!resCons.ok) {
+    toast('Stock revertido, pero no se pudo quitar de la lista de la OT: ' + (resCons.mensaje || ''), 'warning');
+  } else {
+    toast('✅ Consumo anulado' + (idMovimientoInv ? ' y stock restaurado' : ''), 'success');
+  }
+
+  _invItems = [];
+  cacheClear();
+  verOT(idOT);
+}
+
+
 
 
 // — Cambiar Estado —
