@@ -1369,6 +1369,7 @@ function _imgFirma(src) {
 }
 
 function renderDetalleOT(ot) {
+  window._otActual = ot;
   const actividades = ot.ACTIVIDADES_OT || ot.actividades || [];
   const materiales = ot.CONSUMO_MATERIALES_OT || ot.materiales || [];
   const evidencias = ot.EVIDENCIAS || ot.evidencias || [];
@@ -1382,7 +1383,12 @@ function renderDetalleOT(ot) {
         <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:white;padding:6px 12px" onclick="navegarA('ots')">
           <span class="ms" style="font-size:16px">arrow_back</span> Volver
         </button>
-        ${estadoPill(ot.ESTADO)}
+        <div style="display:flex;align-items:center;gap:8px">
+          ${esAdmin() ? `<button onclick="sheetEditarOT()" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:6px;display:flex;color:white;cursor:pointer">
+            <span class="ms" style="font-size:18px">edit</span>
+          </button>` : ''}
+          ${estadoPill(ot.ESTADO)}
+        </div>
       </div>
       <div class="detail-ot-id">${ot.ID_OT}</div>
       <div class="detail-title">Servicio ${ot.ID_SERVICIO || '—'}</div>
@@ -1440,14 +1446,23 @@ function renderDetalleOT(ot) {
         </div>
         ${actividades.length === 0
           ? '<p style="font-size:13px;color:var(--text-muted)">Sin actividades registradas.</p>'
-          : actividades.map(a => `
+          : (window._otActividadesActual = actividades, actividades.map((a, idx) => `
             <div class="act-item">
               <div class="act-icon-wrap orange"><span class="ms" style="font-size:18px">build</span></div>
               <div class="act-content">
                 <div class="act-title">${a.DESCRIPCION || '—'}</div>
-                <div class="act-sub">${a.FECHA ? fmtFecha(a.FECHA) : ''}</div>
+                <div class="act-sub">${a.FECHA ? fmtFecha(a.FECHA) : ''}${a.DURACION ? ' · ' + a.DURACION + ' min' : ''}</div>
               </div>
-            </div>`).join('')}
+              ${esAdmin() ? `
+              <button onclick="sheetEditarActividad(${idx})" title="Editar"
+                style="background:none;border:none;padding:6px;cursor:pointer;display:flex;flex-shrink:0">
+                <span class="ms" style="font-size:18px;color:var(--text-muted)">edit</span>
+              </button>
+              <button onclick="eliminarActividadIdx('${ot.ID_OT}', ${idx})" title="Eliminar"
+                style="background:none;border:none;padding:6px;cursor:pointer;display:flex;flex-shrink:0">
+                <span class="ms" style="font-size:18px;color:var(--danger)">delete</span>
+              </button>` : ''}
+            </div>`).join(''))}
         ${puedeEditar ? `<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="sheetAgregarActividad('${ot.ID_OT}')"><span class="ms" style="font-size:16px">add</span> Agregar actividad</button>` : ''}
       </div>
     </div>
@@ -1467,10 +1482,15 @@ function renderDetalleOT(ot) {
                 <div class="act-title">${m.ITEM || '—'}</div>
                 <div class="act-sub">Cantidad: ${m.CANTIDAD || 1}</div>
               </div>
+              ${puedeEditar || esAdmin() ? `
+              ${esAdmin() ? `<button onclick="editarCantidadMaterial('${ot.ID_OT}', ${idx})" title="Editar cantidad"
+                style="background:none;border:none;padding:6px;cursor:pointer;display:flex;flex-shrink:0">
+                <span class="ms" style="font-size:18px;color:var(--text-muted)">edit</span>
+              </button>` : ''}
               ${puedeEditar ? `<button onclick="anularMaterialIdx('${ot.ID_OT}', ${idx})" title="Anular consumo"
                 style="background:none;border:none;padding:6px;cursor:pointer;display:flex;align-items:center;flex-shrink:0">
                 <span class="ms" style="font-size:18px;color:var(--danger)">delete</span>
-              </button>` : ''}
+              </button>` : ''}` : ''}
             </div>`).join(''))}
         ${puedeEditar ? `<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="sheetRegistrarMaterial('${ot.ID_OT}')"><span class="ms" style="font-size:16px">add</span> Registrar consumo</button>` : ''}
       </div>
@@ -1618,6 +1638,63 @@ async function guardarActividad(idOT) {
     toast(res.mensaje || 'Error al registrar', 'error');
     btn.innerHTML = '<span class="ms" style="font-size:16px">save</span> Guardar';
     btn.disabled = false;
+  }
+}
+
+// — Editar / eliminar actividad (solo Admin) —
+function sheetEditarActividad(idx) {
+  const a = (window._otActividadesActual || [])[idx];
+  if (!a) return;
+  const idOT = window._otActual?.ID_OT;
+  openSheet('Editar Actividad',
+    `<div class="f-group">
+       <label>Descripción</label>
+       <textarea id="shActEditDesc" style="min-height:120px">${a.DESCRIPCION || ''}</textarea>
+     </div>
+     <div class="f-group">
+       <label>Duración (minutos, opcional)</label>
+       <input id="shActEditDuracion" type="number" min="0" step="1" value="${a.DURACION || ''}"/>
+     </div>`,
+    `<button class="btn btn-secondary btn-full" onclick="closeSheet()">Cancelar</button>
+     <button class="btn btn-primary btn-full" onclick="guardarEdicionActividad('${idOT}','${a.ID_ACTIVIDAD}')">
+       <span class="ms" style="font-size:16px">save</span> Guardar cambios
+     </button>`);
+}
+
+async function guardarEdicionActividad(idOT, idActividad) {
+  const desc = document.getElementById('shActEditDesc').value.trim();
+  const duracion = document.getElementById('shActEditDuracion').value;
+  if (!desc) { toast('La descripción no puede estar vacía', 'error'); return; }
+
+  const btn = event.target;
+  btn.innerHTML = '<span class="ms" style="font-size:16px;animation:spin .7s linear infinite;display:inline-block">progress_activity</span> Guardando...';
+  btn.disabled = true;
+
+  const res = await api('ACTIVIDADES', 'actualizar', { idActividad, DESCRIPCION: desc, DURACION: duracion || '' });
+
+  if (res.ok) {
+    toast('✅ Actividad actualizada', 'success');
+    closeSheet();
+    cacheClear();
+    verOT(idOT);
+  } else {
+    toast(res.mensaje || 'Error al actualizar', 'error');
+    btn.innerHTML = '<span class="ms" style="font-size:16px">save</span> Guardar cambios';
+    btn.disabled = false;
+  }
+}
+
+async function eliminarActividadIdx(idOT, idx) {
+  const a = (window._otActividadesActual || [])[idx];
+  if (!a) return;
+  if (!confirm(`¿Eliminar la actividad "${a.DESCRIPCION}"?`)) return;
+  const res = await api('ACTIVIDADES', 'eliminar', { idActividad: a.ID_ACTIVIDAD });
+  if (res.ok) {
+    toast('Actividad eliminada', 'success');
+    cacheClear();
+    verOT(idOT);
+  } else {
+    toast(res.mensaje || 'Error al eliminar', 'error');
   }
 }
 
@@ -1923,7 +2000,73 @@ async function guardarMaterial(idOT) {
   verOT(idOT);
 }
 
-// — Anular consumo de material (devuelve stock y quita el registro de la OT) —
+// — Editar cantidad de material consumido (solo Admin) —
+// Revierte el movimiento original en INVENTARIO y registra uno nuevo con la
+// cantidad corregida, manteniendo el stock siempre exacto.
+async function editarCantidadMaterial(idOT, idx) {
+  const m = (window._otMaterialesActual || [])[idx];
+  if (!m) return;
+  const actual = parseFloat(m.CANTIDAD) || 0;
+  const input = prompt(`Nueva cantidad para "${m.ITEM}" (actual: ${actual}):`, actual);
+  if (input === null) return; // cancelado
+  const nueva = parseFloat(input);
+  if (isNaN(nueva) || nueva <= 0) { toast('Cantidad inválida', 'error'); return; }
+  if (nueva === actual) { toast('No hubo cambios', 'info'); return; }
+
+  if (!m.ID_MOVIMIENTO_INV || !m.ID_ITEM) {
+    if (!confirm('Este registro es anterior a la actualización y no tiene vínculo con inventario. Se cambiará solo el dato en la OT, sin ajustar el stock. ¿Continuar?')) return;
+    const resCons = await api('CONSUMO', 'actualizar', { idConsumo: m.ID_CONSUMO, CANTIDAD: nueva });
+    if (!resCons.ok) { toast(resCons.mensaje || 'Error al actualizar', 'error'); return; }
+    toast('✅ Cantidad actualizada (el stock no se ajustó)', 'success');
+    cacheClear();
+    verOT(idOT);
+    return;
+  }
+
+  toast('Ajustando inventario...', 'info');
+
+  // 1. Anular el movimiento original (devuelve el stock por completo)
+  const resAnular = await apiInv('MOVIMIENTOS', 'anular', {
+    idMovimiento: m.ID_MOVIMIENTO_INV,
+    responsable: CFG.sesion?.empleado || CFG.sesion?.username || 'Admin',
+  });
+  if (!resAnular.ok) {
+    toast('No se pudo ajustar el stock: ' + (resAnular.mensaje || ''), 'error');
+    return;
+  }
+
+  // 2. Registrar el nuevo consumo con la cantidad correcta
+  const resNuevo = await apiInv('MOVIMIENTOS', 'registrar', {
+    ID_ITEM: m.ID_ITEM,
+    TIPO: 'SALIDA',
+    CANTIDAD: nueva,
+    RESPONSABLE: CFG.sesion?.empleado || CFG.sesion?.username || 'Admin',
+    REFERENCIA: `OT:${idOT} (corrección de cantidad)`,
+    OT: idOT,
+  });
+  if (!resNuevo.ok) {
+    toast('Stock revertido, pero no se pudo registrar la nueva salida: ' + (resNuevo.mensaje || ''), 'error');
+    return;
+  }
+
+  // 3. Actualizar el registro de consumo en la OT con la cantidad y el nuevo vínculo
+  const resCons = await api('CONSUMO', 'actualizar', {
+    idConsumo: m.ID_CONSUMO,
+    CANTIDAD: nueva,
+    ID_MOVIMIENTO_INV: resNuevo.datos?.id || '',
+  });
+  if (!resCons.ok) {
+    toast('Stock corregido, pero no se pudo actualizar la lista de la OT: ' + (resCons.mensaje || ''), 'warning');
+  } else {
+    toast(`✅ Cantidad corregida · Stock: ${resNuevo.datos?.stockNuevo ?? '?'}`, 'success');
+  }
+
+  _invItems = [];
+  cacheClear();
+  verOT(idOT);
+}
+
+
 async function anularMaterialIdx(idOT, idx) {
   const m = (window._otMaterialesActual || [])[idx];
   if (!m) return;
@@ -2005,6 +2148,74 @@ async function guardarEstado(idOT) {
   } else {
     toast(res.mensaje || 'Error al cambiar estado', 'error');
     btn.innerHTML = '<span class="ms" style="font-size:16px">swap_horiz</span> Cambiar';
+    btn.disabled = false;
+  }
+}
+
+// — Editar OT completa (solo Admin) —
+function sheetEditarOT() {
+  const ot = window._otActual;
+  if (!ot) return;
+  openSheet('Editar Orden de Trabajo',
+    `<div class="f-group">
+       <label>Técnico</label>
+       <input id="shOtTecnico" type="text" value="${(ot.TECNICO || '').replace(/"/g, '&quot;')}"/>
+     </div>
+     <div class="f-group">
+       <label>Fecha programada</label>
+       <input id="shOtFecha" type="date" value="${fechaInputValue(ot.FECHA_PROGRAMADA)}"/>
+     </div>
+     <div class="f-group">
+       <label>Estado</label>
+       <select id="shOtEstado">
+         ${['Pendiente','En Proceso','En Revisión','Cerrada','Cancelado'].map(e =>
+            `<option value="${e}" ${e === ot.ESTADO ? 'selected' : ''}>${e}</option>`).join('')}
+       </select>
+     </div>
+     <div class="f-group">
+       <label>Horas trabajadas</label>
+       <input id="shOtHoras" type="number" min="0" step="0.5" value="${ot.HORAS_TRABAJADAS || 0}"/>
+     </div>
+     <div class="f-group">
+       <label>Observaciones</label>
+       <textarea id="shOtObs">${ot.OBSERVACIONES || ''}</textarea>
+     </div>`,
+    `<button class="btn btn-secondary btn-full" onclick="closeSheet()">Cancelar</button>
+     <button class="btn btn-primary btn-full" onclick="guardarEdicionOT('${ot.ID_OT}')">
+       <span class="ms" style="font-size:16px">save</span> Guardar cambios
+     </button>`);
+}
+
+async function guardarEdicionOT(idOT) {
+  const tecnico = document.getElementById('shOtTecnico').value.trim();
+  const fecha   = document.getElementById('shOtFecha').value;
+  const estado  = document.getElementById('shOtEstado').value;
+  const horas   = document.getElementById('shOtHoras').value;
+  const obs     = document.getElementById('shOtObs').value.trim();
+
+  if (!tecnico) { toast('El técnico no puede estar vacío', 'error'); return; }
+
+  const btn = event.target;
+  btn.innerHTML = '<span class="ms" style="font-size:16px;animation:spin .7s linear infinite;display:inline-block">progress_activity</span> Guardando...';
+  btn.disabled = true;
+
+  const res = await api('ORDENES_TRABAJO', 'actualizar', {
+    ID_OT: idOT,
+    TECNICO: tecnico,
+    FECHA_PROGRAMADA: fecha,
+    ESTADO: estado,
+    HORAS_TRABAJADAS: horas,
+    OBSERVACIONES: obs,
+  });
+
+  if (res.ok) {
+    toast('✅ OT actualizada', 'success');
+    closeSheet();
+    cacheClear();
+    verOT(idOT);
+  } else {
+    toast(res.mensaje || 'Error al actualizar la OT', 'error');
+    btn.innerHTML = '<span class="ms" style="font-size:16px">save</span> Guardar cambios';
     btn.disabled = false;
   }
 }
@@ -2461,6 +2672,20 @@ function fmtFecha(val) {
   const d = new Date(val);
   if (isNaN(d)) return val;
   return d.toLocaleDateString('es-CO', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+// Rol "Admin" en USUARIOS de ERP_OPERACIONES → edición completa dentro de la OT.
+function esAdmin() {
+  return CFG.sesion?.rol === 'Admin';
+}
+
+// Convierte una fecha (Date, string ISO, etc.) al formato YYYY-MM-DD que
+// requiere <input type="date">.
+function fechaInputValue(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  if (isNaN(d)) return '';
+  return d.toISOString().slice(0, 10);
 }
 
 function toast(msg, type = 'info') {
